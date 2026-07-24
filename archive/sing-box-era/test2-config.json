@@ -1,0 +1,83 @@
+{
+  "log": {
+    "level": "debug",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "proxy-dns",
+        "address": "https://1.1.1.1/dns-query",
+        "detour": "vless-out"
+      },
+      {
+        "tag": "direct-dns",
+        "address": "223.5.5.5",
+        "detour": "direct"
+      }
+    ],
+    "final": "proxy-dns",
+    "strategy": "ipv4_only",
+    "rules": [
+      {
+        "domain": [
+          "example.your-vless-server.tld"
+        ],
+        "server": "direct-dns"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "tproxy",
+      "tag": "tproxy-in",
+      "listen": "0.0.0.0",
+      "listen_port": 7893,
+      "sniff": true
+    },
+    {
+      "type": "mixed",
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "listen_port": 1080
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-out",
+      "server": "example.your-vless-server.tld",
+      "server_port": 443,
+      "uuid": "00000000-0000-0000-0000-000000000000",
+      "tls": {
+        "enabled": true,
+        "server_name": "example.your-vless-server.tld",
+        "alpn": [
+          "http/1.1"
+        ]
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/nl-avt",
+        "headers": {
+          "Host": "example.your-vless-server.tld"
+        }
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "rules": [
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      }
+    ],
+    "final": "vless-out",
+    "default_domain_resolver": "direct-dns"
+  }
+}

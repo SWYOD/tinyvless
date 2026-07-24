@@ -1,0 +1,10 @@
+{
+  "log": { "level": "warn" },
+  "inbounds": [
+    { "type": "tun", "tag": "tun-in", "interface_name": "singtun0",
+      "address": ["172.19.0.1/30"], "mtu": 1500,
+      "auto_route": false, "stack": "system" }
+  ],
+  "outbounds": [ { "type": "direct", "tag": "direct" } ],
+  "route": { "final": "direct" }
+}

@@ -1,0 +1,53 @@
+#!/bin/sh
+# CGI для экспорта/импорта пользовательских настроек tinyvless (конфиг + списки доменов +
+# ссылки-профили). Отдельный скрипт (не cgi-bin/tv) — тут сырое бинарное тело (tar.gz),
+# а общий fs.exec/fs.write шим на страницах работает только с текстом и это бы испортило данные.
+D=/etc/tinyvless
+ALLOWED="config links.json direct_domains.list direct_domains_supplement.list tunnel_domains.list udp_tunnel_domains.list poisoned_domains.list microtun.conf"
+a=$(echo "$QUERY_STRING" | tr '&' '\n' | sed -n 's/^a=//p' | head -1)
+
+case "$a" in
+	export)
+		EXIST=""
+		for f in $ALLOWED; do
+			[ -f "$D/$f" ] && EXIST="$EXIST $f"
+		done
+		printf 'Content-Type: application/gzip\r\n'
+		printf 'Content-Disposition: attachment; filename="tinyvless-backup-%s.tar.gz"\r\n' "$(date +%Y%m%d-%H%M)"
+		printf 'Cache-Control: no-store\r\n\r\n'
+		[ -n "$EXIST" ] && tar -czf - -C "$D" $EXIST 2>/dev/null
+		;;
+	restore)
+		printf 'Content-Type: application/json\r\n'
+		printf 'Cache-Control: no-store\r\n\r\n'
+		TMP="/tmp/.tv_restore_$$.tgz"
+		if [ -n "$CONTENT_LENGTH" ]; then
+			head -c "$CONTENT_LENGTH" > "$TMP"
+		else
+			cat > "$TMP"
+		fi
+		if [ ! -s "$TMP" ]; then
+			echo '{"error":"empty upload"}'; rm -f "$TMP"; exit 0
+		fi
+		LIST=$(tar -tzf "$TMP" 2>/dev/null)
+		if [ -z "$LIST" ]; then
+			echo '{"error":"bad archive"}'; rm -f "$TMP"; exit 0
+		fi
+		# безопасность: архив должен содержать ТОЛЬКО ожидаемые имена файлов верхнего уровня
+		# (без путей/../) — иначе распаковка отклоняется целиком, не по частям
+		BAD=$(echo "$LIST" | grep -vE '^(config|links\.json|direct_domains\.list|direct_domains_supplement\.list|tunnel_domains\.list|udp_tunnel_domains\.list|poisoned_domains\.list|microtun\.conf)$')
+		if [ -n "$BAD" ]; then
+			echo '{"error":"unexpected files in archive"}'; rm -f "$TMP"; exit 0
+		fi
+		if tar -xzf "$TMP" -C "$D" 2>/dev/null; then
+			echo '{"ok":true}'
+		else
+			echo '{"error":"extract failed"}'
+		fi
+		rm -f "$TMP"
+		;;
+	*)
+		printf 'Content-Type: application/json\r\n\r\n'
+		echo '{"error":"unknown action"}'
+		;;
+esac

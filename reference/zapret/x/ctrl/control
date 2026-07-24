@@ -1,0 +1,14 @@
+Package: zapret
+Version: 72.20260307-r1
+Depends: libc, nftables, curl, gzip, coreutils, coreutils-sort, coreutils-sleep, kmod-nft-nat, kmod-nft-offload, kmod-nft-queue, libnetfilter-queue1, libmnl0, libcap, zlib
+Source: feeds/base/zapret-openwrt/zapret
+SourceName: zapret
+License: MIT
+LicenseFiles: docs/LICENSE.txt
+Section: net
+SourceDateEpoch: 1772861338
+URL: https://github.com/bol-van/zapret
+Maintainer: bol-van
+Architecture: mipsel_24kc
+Installed-Size: 675840
+Description:  zapret

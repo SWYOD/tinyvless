@@ -1,0 +1,19 @@
+{
+  "log": { "level": "trace", "timestamp": true },
+  "dns": {
+    "servers": [ { "tag": "d", "address": "127.0.0.1", "detour": "direct" } ],
+    "final": "d", "strategy": "ipv4_only"
+  },
+  "inbounds": [ { "type": "mixed", "tag": "socks-in", "listen": "127.0.0.1", "listen_port": 1080 } ],
+  "outbounds": [
+    {
+      "type": "vless", "tag": "vless-out",
+      "server": "84.201.132.137", "server_port": 443,
+      "uuid": "00000000-0000-0000-0000-000000000000",
+      "tls": { "enabled": true, "server_name": "example.your-vless-server.tld", "alpn": ["http/1.1"] },
+      "transport": { "type": "ws", "path": "/nl-avt", "headers": { "Host": "example.your-vless-server.tld" } }
+    },
+    { "type": "direct", "tag": "direct" }
+  ],
+  "route": { "final": "vless-out" }
+}

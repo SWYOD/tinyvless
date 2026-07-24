@@ -1,0 +1,27 @@
+{
+	"luci-app-tinyvless": {
+		"description": "Manage tinyvless VLESS router",
+		"read": {
+			"file": {
+				"/etc/tinyvless/config": [ "read" ],
+				"/etc/tinyvless/links.json": [ "read" ],
+				"/etc/tinyvless/direct_domains.list": [ "read" ],
+				"/etc/tinyvless/tunnel_domains.list": [ "read" ],
+				"/etc/tinyvless/poisoned_domains.list": [ "read" ],
+				"/etc/tinyvless/zapret_domains.list": [ "read" ],
+				"/etc/tinyvless/api.sh": [ "exec" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/etc/tinyvless/config": [ "write" ],
+				"/etc/tinyvless/links.json": [ "write" ],
+				"/etc/tinyvless/testlink.txt": [ "write" ],
+				"/etc/tinyvless/direct_domains.list": [ "write" ],
+				"/etc/tinyvless/tunnel_domains.list": [ "write" ],
+				"/etc/tinyvless/poisoned_domains.list": [ "write" ],
+				"/etc/tinyvless/zapret_domains.list": [ "write" ]
+			}
+		}
+	}
+}

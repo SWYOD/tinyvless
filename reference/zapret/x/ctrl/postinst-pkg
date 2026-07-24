@@ -1,0 +1,56 @@
+#!/bin/sh
+# check if we are on real system
+if [ -z "${IPKG_INSTROOT}" ]; then
+	ZAPRET_DIR=/opt/zapret
+	ZAPRET_INITD=/etc/init.d/zapret
+	ZAPRET_CFG=/etc/config/zapret
+	ZAPRET_CONFIG=/opt/zapret/config
+	ZAPRET_CONFIG_DEF="/opt/zapret/config.default"
+	# Fix permissions
+	chmod 644 ${ZAPRET_CFG} >/dev/null 2>&1
+	chmod 644 ${ZAPRET_DIR}/ipset/*.txt >/dev/null 2>&1
+	chmod 644 ${ZAPRET_DIR}/ipset_def/*.txt >/dev/null 2>&1
+	chmod 644 ${ZAPRET_DIR}/init.d/openwrt/custom.d/*.sh >/dev/null 2>&1
+	chmod 644 ${ZAPRET_DIR}/config* >/dev/null 2>&1
+	# cleanup custom.d directory
+	rm -f ${ZAPRET_DIR}/init.d/openwrt/custom.d/*-opkg*
+	rm -f ${ZAPRET_DIR}/init.d/openwrt/custom.d/*.opkg*
+	rm -f ${ZAPRET_DIR}/init.d/openwrt/custom.d/*.apk*
+	# creating main config if its not exists
+	if [ ! -f "${ZAPRET_CONFIG}" ]; then
+		cp -f "${ZAPRET_CONFIG_DEF}" "${ZAPRET_CONFIG}"
+	fi
+	# check obsolete format for main config
+	if grep -qE "^NFQWS_OPT_DESYNC=|^MODE_HTTP=|^MODE_HTTPS=|^MODE_QUIC=|^MODE=" "${ZAPRET_CONFIG}" ; then
+		echo "Detect obsolute format for main config!"
+		ZAPRET_CONFIG_BACKUP="${ZAPRET_CONFIG}.backup"
+		cp -f "${ZAPRET_CONFIG}" "${ZAPRET_CONFIG_BACKUP}"
+		echo "Current file ${ZAPRET_CONFIG} backuped to ${ZAPRET_CONFIG_BACKUP}"
+		cp -f "${ZAPRET_CONFIG_DEF}" "${ZAPRET_CONFIG}"
+	fi
+	# remove fake uci-config
+	[ -f "${ZAPRET_CFG}" ] && [ ! -s "${ZAPRET_CFG}" ] && rm -f "${ZAPRET_CFG}"
+	# check existing uci-config
+	[ -f "${ZAPRET_CFG}" ] && ZAPRET_CFG_EXISTS=1 || ZAPRET_CFG_EXISTS=0
+	# create or merge uci-config
+	/opt/zapret/uci-def-cfg.sh
+	[ "${ZAPRET_CFG_EXISTS}" = "1" ] && echo "Config /etc/config/zapret merged with default uci-config"
+	# remove uci-default script from system dir (used into /etc/init.d/boot)
+	rm -f /etc/uci-defaults/zapret-uci-def-cfg.sh
+	# copy (sync) all params from uci-config to main config
+	/opt/zapret/sync_config.sh
+	# check main config
+	sh -n "${ZAPRET_CONFIG}" 2>/dev/null || cp -f "${ZAPRET_CONFIG_DEF}" "${ZAPRET_CONFIG}"
+	sh -n "${ZAPRET_CONFIG}" 2>/dev/null || exit 58
+	# enable main service
+	${ZAPRET_INITD} enable
+	# stop all
+	${ZAPRET_INITD} stop_fw >/dev/null 2>&1
+	${ZAPRET_INITD} stop_daemons >/dev/null 2>&1
+	ps w | grep '/opt/zapret/nfq/nfqws' | grep -v grep | awk '{print $1}' | xargs -r kill -9
+	# start main service
+	${ZAPRET_INITD} start
+	# restart firewall
+	[ -x /sbin/fw4 ] && fw4 -q restart || fw3 -q restart
+fi
+exit 0

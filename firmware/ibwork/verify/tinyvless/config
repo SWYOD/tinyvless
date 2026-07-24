@@ -1,0 +1,5 @@
+# tinyvless — конфигурация (правится через LuCI или вручную)
+VLESS_LINK=''
+MODE=selective
+REDIR_PORT=1082
+TPROXY_PORT=1083

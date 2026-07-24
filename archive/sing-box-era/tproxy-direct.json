@@ -1,0 +1,8 @@
+{
+  "log": { "level": "info", "timestamp": true },
+  "inbounds": [
+    { "type": "tproxy", "tag": "tproxy-in", "listen": "0.0.0.0", "listen_port": 7893, "sniff": true }
+  ],
+  "outbounds": [ { "type": "direct", "tag": "direct" } ],
+  "route": { "auto_detect_interface": true, "final": "direct" }
+}

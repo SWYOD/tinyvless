@@ -1,0 +1,38 @@
+#!/bin/sh
+# Системные твики RAM: logd, IPv6 off, без attended sysupgrade.
+[ "$ACTION" = "restart" ] || exit 0
+
+# logd: 96 KiB (между 64 и 128 — меньше RAM, достаточно для tv-health)
+if [ -f /etc/config/system ]; then
+	uci -q get system.@system[0].log_size >/dev/null 2>&1 || uci add system system
+	uci set system.@system[0].log_size='96'
+	uci commit system
+fi
+/etc/init.d/log restart >/dev/null 2>&1
+
+# IPv6 off — экономия RAM и nft/dhcp6
+if [ -f /etc/config/dhcp ]; then
+	uci set dhcp.lan.ra='disabled'
+	uci set dhcp.lan.dhcpv6='disabled'
+	uci set dhcp.lan.ndp='disabled'
+	uci commit dhcp
+fi
+for f in /proc/sys/net/ipv6/conf/all/disable_ipv6 /proc/sys/net/ipv6/conf/default/disable_ipv6; do
+	[ -w "$f" ] && echo 1 > "$f"
+done
+for f in /proc/sys/net/ipv6/conf/*/disable_ipv6; do
+	[ -w "$f" ] && echo 1 > "$f"
+done
+# filter-AAAA через UCI dnsmasq (не filter-aaaa в dnsmasq.conf — crash на этой сборке)
+if [ -f /etc/config/dhcp ]; then
+	uci set dhcp.@dnsmasq[0].filter_aaaa='1'
+	uci commit dhcp
+fi
+[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd disable >/dev/null 2>&1
+
+# Автообновление прошивки не нужно на кастомном образе
+[ -x /etc/init.d/attendedsysupgrade ] && /etc/init.d/attendedsysupgrade disable >/dev/null 2>&1
+opkg remove attendedsysupgrade-common luci-app-attendedsysupgrade 2>/dev/null || true
+apk del attendedsysupgrade-common luci-app-attendedsysupgrade 2>/dev/null || true
+
+exit 0

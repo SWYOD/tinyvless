@@ -1,0 +1,14 @@
+# Дополнение к RU_SET=1 (ru_cidr 8626 подсетей).
+# Только домены, чьи IP НЕ попадают в geo-базу, но должны идти напрямую.
+# Остальные RU-домены из direct_domains.list покрывает ru_cidr — nftset для них
+# лишний: 46 резолвов при старте dnsmasq → RAM/CPU churn + spam «no usable address».
+im.vk.com
+im.vk.ru
+userapi.com
+pay.yandex.ru
+market.yandex.ru
+mail.yandex.ru
+# Ozon: CDN 185.73.x.x вне ru_cidr (geo-дыра) → без nftset шёл в туннель → не грузился
+ozon.ru
+www.ozon.ru
+st.ozone.ru

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Передний двухцветный LED (white:status/red:status) как индикатор связи модема:
+# wwan (данные) поднялись → белый ровно; упали → красный. Event-driven, без polling.
+[ "$INTERFACE" = "wwan" ] || exit 0
+W=/sys/class/leds/white:status/brightness
+R=/sys/class/leds/red:status/brightness
+case "$ACTION" in
+	ifup)   echo 1 > "$W" 2>/dev/null; echo 0 > "$R" 2>/dev/null ;;
+	ifdown) echo 0 > "$W" 2>/dev/null; echo 1 > "$R" 2>/dev/null ;;
+esac
+exit 0

@@ -1,0 +1,11 @@
+# Домены для «Селективный UDP» (UDP_TUNNEL=selective).
+# По одному домену в строке. dnsmasq → nftset udp_tunnel_domains.
+discord.com
+discord.gg
+discordapp.com
+discordapp.net
+discord.media
+telegram.org
+t.me
+youtube.com
+googlevideo.com

@@ -1,0 +1,9 @@
+#!/bin/sh
+# Выполняется ОДИН раз при первой загрузке после прошивки (uci-defaults).
+uci set dhcp.@dnsmasq[0].cachesize=300
+uci set dhcp.@dnsmasq[0].filter_aaaa='1'
+uci set dhcp.lan.ra='disabled'
+uci set dhcp.lan.dhcpv6='disabled'
+uci set dhcp.lan.ndp='disabled'
+uci commit dhcp
+exit 0

@@ -1,0 +1,24 @@
+#!/bin/sh
+# CGI для standalone-страницы /tinyvless/sms/ — список/удаление SMS через atcmd (AT-команды
+# напрямую на модем, без ModemManager/sms-tool — экономия flash/RAM на этом железе).
+qs="$QUERY_STRING"
+getp() { echo "$qs" | tr '&' '\n' | sed -n "s/^$1=//p" | head -1; }
+a=$(getp a)
+idx=$(getp idx)
+
+printf 'Content-Type: application/json\r\n'
+printf 'Cache-Control: no-store\r\n\r\n'
+
+case "$a" in
+	list)
+		[ -x /usr/bin/atcmd ] && /usr/bin/atcmd sms-list-json 2>/dev/null || echo '[]'
+		;;
+	delete)
+		echo "$idx" | grep -qE '^[0-9]+(,[0-9]+)*$' || { echo '{"error":"bad idx"}'; exit 0; }
+		/usr/bin/atcmd sms-clear "$idx" >/dev/null 2>&1
+		echo '{"ok":true}'
+		;;
+	*)
+		echo '{"error":"unknown action"}'
+		;;
+esac

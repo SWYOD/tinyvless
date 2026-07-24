@@ -1,0 +1,8 @@
+config main 'config'
+	option update_dnsmasq_config '0'
+
+config https-dns-proxy
+	option bootstrap_dns '1.1.1.1,1.0.0.1'
+	option resolver_url 'https://1.1.1.1/dns-query'
+	option listen_addr '127.0.0.1'
+	option listen_port '5053'

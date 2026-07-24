@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tinyvless — для разработчиков</title>
+<style>
+:root{ --txt:#e6edf3; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:#0d1117; color:var(--txt); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:14px 16px; }
+.tv-loading{ min-height:calc(100vh - 28px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; color:#8b949e; text-align:center; padding:24px; }
+.tv-loading-brand{ color:#3fb950; animation:tvpulse 1.7s ease-in-out infinite; }
+.tv-loading-brand svg{ display:block; }
+.tv-loading-text{ margin:0; font-size:15px; letter-spacing:.02em; }
+@keyframes tvpulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.1); opacity:.8; } }
+</style>
+</head>
+<body>
+<div id="app">
+	<div class="tv-loading">
+		<div class="tv-loading-brand">
+			<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M14 4l-4 16"/></svg>
+		</div>
+		<p class="tv-loading-text">Загрузка…</p>
+	</div>
+</div>
+<script>
+var CGI = '/cgi-bin/tv';
+var FMAP = {
+	'/etc/tinyvless/beta_flags.json': 'beta_flags'
+};
+function append(el, ch) {
+	if (ch == null) return;
+	if (Array.isArray(ch)) { ch.forEach(function (c) { append(el, c); }); return; }
+	if (ch instanceof Node) el.appendChild(ch); else el.appendChild(document.createTextNode(String(ch)));
+}
+function E(tag, attrs, children) {
+	if (arguments.length === 2 && (Array.isArray(attrs) || attrs instanceof Node)) { children = attrs; attrs = {}; }
+	attrs = attrs || {};
+	if (tag === 'style') { var s = document.createElement('style'); s.textContent = children; return s; }
+	var el = document.createElement(tag);
+	for (var k in attrs) {
+		if (attrs[k] == null) continue;
+		if (k === 'class') el.className = attrs[k];
+		else if (k === 'click') el.addEventListener('click', attrs[k]);
+		else el.setAttribute(k, attrs[k]);
+	}
+	append(el, children);
+	return el;
+}
+var fs = {
+	read: function (path) {
+		var f = FMAP[path]; if (!f) return Promise.reject('bad path');
+		return fetch(CGI + '?a=read&f=' + f, { cache: 'no-store' }).then(function (r) { return r.text(); });
+	},
+	write: function (path, data) {
+		var f = FMAP[path]; if (!f) return Promise.reject('bad path');
+		return fetch(CGI + '?a=write&f=' + f, { method: 'POST', body: data == null ? '' : String(data) }).then(function (r) { return r.json(); });
+	},
+	exec: function (path, args) {
+		args = args || [];
+		var q = 'a=exec&cmd=' + encodeURIComponent(args[0] || '');
+		if (args[1] != null) q += '&arg=' + encodeURIComponent(args[1]);
+		return fetch(CGI + '?' + q, { cache: 'no-store' }).then(function (r) { return r.text(); })
+			.then(function (t) { return { stdout: t }; });
+	}
+};
+var ui = { createHandlerFn: function (c, fn) { return fn; } };
+var poll = { add: function () {} };
+var view = { extend: function (o) { return o; } };
+fetch('/luci-static/resources/view/tinyvless/dev.js', { cache: 'no-store' })
+	.then(function (r) { return r.text(); })
+	.then(function (src) {
+		var app = new Function('view', 'fs', 'ui', 'poll', 'E', src)(view, fs, ui, poll, E);
+		return Promise.resolve(app.load()).then(function (data) {
+			document.getElementById('app').innerHTML = '';
+			document.getElementById('app').appendChild(app.render(data));
+		});
+	})
+	.catch(function (e) {
+		document.getElementById('app').innerHTML = '<div class="tv-loading"><div class="tv-loading-brand" style="color:#f85149;animation:none"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/></svg></div><p class="tv-loading-text">Ошибка загрузки: ' + e + '</p></div>';
+	});
+</script>
+</body>
+</html>

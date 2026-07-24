@@ -1,0 +1,24 @@
+# tinyvless — конфигурация (правится через LuCI или вручную)
+VLESS_LINK=''
+MODE=selective
+REDIR_PORT=1082
+TPROXY_PORT=1083
+# Zapret (обход DPI для доменов из zapret_domains.list). 0=выкл 1=вкл.
+ZAPRET_ENABLE=0
+# RU_SET=0 → не грузить тяжёлый RU-CIDR набор (8626 подсетей, экономит ~2.4МБ RAM под Zapret);
+# RU-роутинг тогда по доменам из direct_domains.list. RU_SET=1 → грузить полную базу.
+# ★ Zapret отключён и исключён из проекта — экономия RAM больше не нужна. v6/v7/v8 (стабильные
+# релизы) НЕ содержали этой строки вообще (дефолт tvroute.sh/apply-route.sh = 1) — RU_SET=0
+# был временным остатком zapret-экспериментов и чуть не попал в v9 регрессом. RU_SET=1 — верно.
+RU_SET=1
+
+# DNS-резолв (настраивается через панель, карточка «DNS-резолв»):
+# DNS_PRIMARY/DNS_FALLBACK — обычные (не-DoH) резолверы, используются для всего, кроме доменов
+# из poisoned_domains.list. Дефолт — два независимых адреса Яндекс DNS (не блокируются Yota,
+# подтверждено 2026-07-08: корректно резолвят RU И зарубежные домены, включая Instagram, БЕЗ DoH).
+DNS_PRIMARY=77.88.8.8
+DNS_FALLBACK=77.88.8.1
+# DOH_MODE: off = только PRIMARY/FALLBACK, DoH не используется вообще.
+#           smart = PRIMARY/FALLBACK для всего + DoH точечно для доменов из poisoned_domains.list.
+#           full = ВСЁ через DoH-туннель (старое поведение, максимально безопасно но медленнее).
+DOH_MODE=smart

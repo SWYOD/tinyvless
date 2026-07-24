@@ -1,0 +1,53 @@
+# Домены НАПРЯМУЮ в обход туннеля (по одному в строке, # — комментарий).
+# База RU-сервисов + сервисы на зарубежном хостинге с RU-IP вне geo-базы.
+# --- Госуслуги / гос ---
+gosuslugi.ru
+mos.ru
+nalog.ru
+nalog.gov.ru
+pfr.gov.ru
+# --- Банки ---
+sberbank.ru
+sber.ru
+tinkoff.ru
+tbank.ru
+alfabank.ru
+vtb.ru
+gazprombank.ru
+raiffeisen.ru
+psbank.ru
+open.ru
+# --- Маркетплейсы / сервисы ---
+ozon.ru
+wildberries.ru
+wb.ru
+avito.ru
+megamarket.ru
+# --- Яндекс / VK / Mail ---
+yandex.ru
+ya.ru
+yandex.net
+dzen.ru
+pay.yandex.ru
+market.yandex.ru
+mail.yandex.ru
+vk.com
+vk.ru
+vkontakte.ru
+im.vk.com
+im.vk.ru
+userapi.com
+mail.ru
+list.ru
+# --- Медиа / связь / утилиты ---
+kinopoisk.ru
+rutube.ru
+gismeteo.ru
+2gis.ru
+2gis.com
+rt.ru
+mts.ru
+megafon.ru
+beeline.ru
+tele2.ru
+yota.ru

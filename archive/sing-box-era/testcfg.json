@@ -1,0 +1,16 @@
+{
+  "log": { "level": "info", "timestamp": true },
+  "inbounds": [
+    { "type": "tun", "tag": "tun-in", "interface_name": "singtun0",
+      "address": ["172.19.0.1/30"], "mtu": 1500,
+      "auto_route": true, "strict_route": false, "stack": "system" }
+  ],
+  "outbounds": [
+    { "type": "vless", "tag": "vless-out", "server": "example.com",
+      "server_port": 443, "uuid": "00000000-0000-0000-0000-000000000000",
+      "tls": { "enabled": true, "server_name": "example.com" },
+      "transport": { "type": "ws", "path": "/" } },
+    { "type": "direct", "tag": "direct" }
+  ],
+  "route": { "auto_detect_interface": true, "final": "direct" }
+}

@@ -1,0 +1,11 @@
+=== MagnumOpus v10-magnumopus-20260709: snapshot + staging ===
+=== staging overlay ===
+=== docker ImageBuilder (v10-magnumopus-20260709) ===
+debconf: delaying package configuration, since apt-utils is not installed
+'/build/ib/bin/targets/ramips/mt76x8/openwrt-25.12.5-tinyvless-v10-magnumopus-ramips-mt76x8-cudy_lt300-v3-squashfs-sysupgrade.bin' -> '/out/openwrt-25.12.5-tinyvless-v10-magnumopus-ramips-mt76x8-cudy_lt300-v3-squashfs-sysupgrade.bin'
+'/build/ib/bin/targets/ramips/mt76x8/openwrt-25.12.5-tinyvless-v10-magnumopus-ramips-mt76x8-cudy_lt300-v3.manifest' -> '/out/openwrt-25.12.5-tinyvless-v10-magnumopus-ramips-mt76x8-cudy_lt300-v3.manifest'
+/Users/ilyatrubnikov/cudy-lt300-build/firmware/ibwork/out/openwrt-25.12.5-tinyvless-v10-magnumopus-ramips-mt76x8-cudy_lt300-v3-squashfs-sysupgrade.bin -> /Users/ilyatrubnikov/cudy-lt300-build/releases/lt300-tinyvless-v10-magnumopus-20260709.bin
+/Users/ilyatrubnikov/cudy-lt300-build/firmware/ibwork/out/openwrt-25.12.5-tinyvless-v10-magnumopus-ramips-mt76x8-cudy_lt300-v3.manifest -> /Users/ilyatrubnikov/cudy-lt300-build/releases/lt300-tinyvless-v10-magnumopus-20260709.manifest
+=== OK MagnumOpus ===
+Image: /Users/ilyatrubnikov/cudy-lt300-build/releases/lt300-tinyvless-v10-magnumopus-20260709.bin
+SHA256: 12a7b79696b6d6abb39066d1f394879920aae8ef5615dfa7b1c6477f332e2a06

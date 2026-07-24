@@ -1,0 +1,63 @@
+#!/bin/sh
+# CGI-бэкенд для отдельной панели /tinyvless (без LuCI).
+# Реализует read/write файлов (строгий whitelist) + exec api.sh (whitelist команд),
+# чтобы страница могла грузить ТОТ ЖЕ код морды через шимы поверх этого CGI.
+# Безопасно: параметры извлекаются построчно, файлы и команды строго whitelist'ятся.
+D=/etc/tinyvless
+
+# whitelist файлов: короткий ключ -> путь
+fpath() {
+	case "$1" in
+		config) echo "$D/config" ;;
+		links)  echo "$D/links.json" ;;
+		direct) echo "$D/direct_domains.list" ;;
+		tunnel) echo "$D/tunnel_domains.list" ;;
+		zapret) echo "$D/zapret_domains.list" ;;
+		poisoned) echo "$D/poisoned_domains.list" ;;
+		test)   echo "$D/testlink.txt" ;;
+		*)      echo "" ;;
+	esac
+}
+
+qs="$QUERY_STRING"
+getp() { echo "$qs" | tr '&' '\n' | sed -n "s/^$1=//p" | head -1; }
+urldec() { printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\(..\)/\\x\1/g')"; }
+a=$(getp a); f=$(getp f); cmd=$(getp cmd); arg=$(getp arg); m=$(getp m); v=$(getp v)
+
+printf 'Content-Type: application/json\r\n'
+printf 'Cache-Control: no-store\r\n\r\n'
+
+case "$a" in
+	read)
+		p=$(fpath "$f"); [ -n "$p" ] && cat "$p" 2>/dev/null; true ;;
+	write)
+		p=$(fpath "$f")
+		if [ -n "$p" ]; then
+			if [ -n "$CONTENT_LENGTH" ]; then head -c "$CONTENT_LENGTH" > "$p"; else cat > "$p"; fi
+			echo '{"ok":true}'
+		else echo '{"error":"bad file"}'; fi ;;
+	exec)
+		case "$cmd" in
+			status|state|restart|start|stop|poweroff|reboot|domains|dnsapply|testlink) /etc/tinyvless/api.sh "$cmd" ;;
+			checkdomain) [ -n "$arg" ] && /etc/tinyvless/api.sh checkdomain "$arg" || echo '{"error":"no domain"}' ;;
+			mode)      case "$arg" in selective|full|off) /etc/tinyvless/api.sh mode "$arg" ;; *) echo '{"error":"bad"}' ;; esac ;;
+			autostart) case "$arg" in on|off) /etc/tinyvless/api.sh autostart "$arg" ;; *) echo '{"error":"bad"}' ;; esac ;;
+			zapret)    case "$arg" in on|off) /etc/tinyvless/api.sh zapret "$arg" ;; *) echo '{"error":"bad"}' ;; esac ;;
+			tuning)
+				case "$m" in select_level|ru_set|udp_tunnel)
+					case "$arg" in
+						low|high|on|off|full|discord) /etc/tinyvless/api.sh tuning "$m" "$arg" ;;
+						*) echo '{"error":"bad val"}' ;;
+					esac ;;
+				*) echo '{"error":"bad key"}' ;;
+				esac ;;
+			*) echo '{"error":"bad cmd"}' ;;
+		esac ;;
+	# --- простые действия (обратная совместимость) ---
+	status)   /etc/tinyvless/api.sh status ;;
+	state)    /etc/tinyvless/api.sh state ;;
+	profiles) cat "$D/links.json" 2>/dev/null || echo '[]' ;;
+	mode)     case "$m" in selective|full|off) /etc/tinyvless/api.sh mode "$m" ;; *) echo '{"error":"bad mode"}' ;; esac ;;
+	power)    case "$v" in on) /etc/tinyvless/api.sh start ;; off) /etc/tinyvless/api.sh stop ;; *) echo '{"error":"bad"}' ;; esac ;;
+	*)        echo '{"error":"unknown"}' ;;
+esac

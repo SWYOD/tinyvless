@@ -1,0 +1,1 @@
+{"tunnel":[{"label":"Cloudflare","url":"https://speed.cloudflare.com","type":"cf"},{"label":"Google","url":"https://www.google.com","type":"generic"}],"direct":[{"label":"Mail.ru","url":"https://mail.ru","type":"generic"},{"label":"VK","url":"https://vk.com","type":"generic"}]}

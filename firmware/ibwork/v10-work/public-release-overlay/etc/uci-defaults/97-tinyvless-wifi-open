@@ -1,0 +1,14 @@
+#!/bin/sh
+# Только для публичного релиза (V12+): открытая WiFi-сеть без пароля, чтобы новый человек
+# с любым устройством сразу увидел панель и прошёл настройку сам, как на vanilla OpenWrt.
+# В личной сборке юзера (v10-work/etc напрямую) этого файла нет — WiFi-пароль там ставится
+# вручную через failsafe/панель, см. cudy-lt300-led-settings.md / user-mods-log.md в памяти.
+uci -q batch <<-EOF
+	set wireless.radio0.channel='1'
+	set wireless.default_radio0.ssid='CUDY-OWRT-V3'
+	set wireless.default_radio0.encryption='none'
+	set wireless.default_radio0.disabled='0'
+	delete wireless.default_radio0.key
+	commit wireless
+EOF
+exit 0

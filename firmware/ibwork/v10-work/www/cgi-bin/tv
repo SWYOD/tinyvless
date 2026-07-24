@@ -1,0 +1,124 @@
+#!/bin/sh
+# CGI-бэкенд для /tinyvless и /tinyvless/microtun (MagnumOpusPlus V10).
+D=/etc/tinyvless
+
+fpath() {
+	case "$1" in
+		config) echo "$D/config" ;;
+		links)  echo "$D/links.json" ;;
+		direct) echo "$D/direct_domains.list" ;;
+		tunnel) echo "$D/tunnel_domains.list" ;;
+		udp_tunnel) echo "$D/udp_tunnel_domains.list" ;;
+		poisoned) echo "$D/poisoned_domains.list" ;;
+		microtun) echo "$D/microtun.conf" ;;
+		microtun_defaults) echo "$D/microtun.defaults" ;;
+		test)   echo "$D/testlink.txt" ;;
+		card_order) echo "$D/card_order.json" ;;
+		speedtest_sources) echo "$D/speedtest_sources.json" ;;
+		poll_interval) echo "$D/poll_interval.json" ;;
+		beta_flags) echo "$D/beta_flags.json" ;;
+		*)      echo "" ;;
+	esac
+}
+
+qs="$QUERY_STRING"
+post_body=""
+if [ "$REQUEST_METHOD" = "POST" ]; then
+	if [ -n "$CONTENT_LENGTH" ]; then
+		post_body=$(head -c "$CONTENT_LENGTH")
+	elif [ ! -t 0 ]; then
+		post_body=$(cat)
+	fi
+fi
+getp() { echo "$qs" | tr '&' '\n' | sed -n "s/^$1=//p" | head -1; }
+getpp() { echo "$post_body" | tr '&' '\n' | sed -n "s/^$1=//p" | head -1; }
+param() {
+	local v
+	v=$(getp "$1")
+	[ -n "$v" ] && { echo "$v"; return; }
+	getpp "$1"
+}
+urldecode() {
+	local s="$1"
+	[ -z "$s" ] && return
+	s=$(echo "$s" | sed 's/+/ /g')
+	printf '%b' "$(echo "$s" | sed 's/%\([0-9a-fA-F][0-9a-fA-F]\)/\\x\1/g')"
+}
+a=$(getp a); f=$(getp f); cmd=$(getp cmd); arg=$(urldecode "$(param arg)"); m=$(param m); v=$(param v)
+mac=$(urldecode "$(param mac)")
+t=$(param t)
+
+printf 'Content-Type: application/json\r\n'
+printf 'Cache-Control: no-store\r\n\r\n'
+
+case "$a" in
+	read)
+		p=$(fpath "$f"); [ -n "$p" ] && cat "$p" 2>/dev/null; true ;;
+	write)
+		p=$(fpath "$f")
+		if [ -n "$p" ]; then
+			if [ -n "$post_body" ]; then
+				printf '%s' "$post_body" > "$p"
+			elif [ -n "$CONTENT_LENGTH" ]; then
+				head -c "$CONTENT_LENGTH" > "$p"
+			else
+				cat > "$p"
+			fi
+			echo '{"ok":true}'
+		else echo '{"error":"bad file"}'; fi ;;
+	exec)
+		case "$cmd" in
+			status|state|restart|start|stop|poweroff|reboot|domains|dnsapply|testlink|clients|microtun_get|microtun_reset|netinfo|log) /etc/tinyvless/api.sh "$cmd" ;;
+			speedtest_ping)
+				case "$m" in tunnel|direct) [ -n "$arg" ] && /etc/tinyvless/api.sh speedtest_ping "$m" "$arg" "$t" || echo '{"error":"no url"}' ;; *) echo '{"error":"bad via"}' ;; esac ;;
+			speedtest_dl_chunk)
+				case "$m" in tunnel|direct) [ -n "$arg" ] && /etc/tinyvless/api.sh speedtest_dl_chunk "$m" "$arg" "$t" "$v" || echo '{"error":"no url"}' ;; *) echo '{"error":"bad via"}' ;; esac ;;
+			speedtest_ul_chunk)
+				case "$m" in tunnel|direct) [ -n "$arg" ] && /etc/tinyvless/api.sh speedtest_ul_chunk "$m" "$arg" "$t" "$v" || echo '{"error":"no url"}' ;; *) echo '{"error":"bad via"}' ;; esac ;;
+			subscription_fetch)
+				if [ -n "$arg" ]; then
+					/etc/tinyvless/api.sh subscription_fetch "$arg"
+				else
+					echo '{"error":"no url"}'
+				fi
+				;;
+			microtun_apply)
+				if [ -n "$post_body" ]; then
+					export MICROTUN_BODY="$post_body"
+				elif [ -n "$CONTENT_LENGTH" ]; then
+					export MICROTUN_BODY=$(head -c "$CONTENT_LENGTH")
+				fi
+				/etc/tinyvless/api.sh microtun_apply ;;
+			checkdomain) [ -n "$arg" ] && /etc/tinyvless/api.sh checkdomain "$arg" || echo '{"error":"no domain"}' ;;
+			checkreach)
+				case "$m" in nslookup|ping)
+					[ -n "$arg" ] && /etc/tinyvless/api.sh checkreach "$m" "$arg" || echo '{"error":"no domain"}' ;;
+				*) echo '{"error":"bad type"}' ;; esac ;;
+			mode)      case "$arg" in selective|full|off) /etc/tinyvless/api.sh mode "$arg" ;; *) echo '{"error":"bad"}' ;; esac ;;
+			autostart) case "$arg" in on|off) /etc/tinyvless/api.sh autostart "$arg" ;; *) echo '{"error":"bad"}' ;; esac ;;
+			client_bypass)
+				case "$arg" in on|off)
+					if [ -n "$mac" ]; then
+						/etc/tinyvless/api.sh client_bypass "$mac" "$arg"
+					else
+						echo '{"error":"no mac"}'
+					fi
+					;;
+				*) echo '{"error":"bad"}' ;; esac ;;
+			tuning)
+				case "$m" in select_level|ru_set|udp_tunnel)
+					case "$arg" in
+						low|high|on|off|full|selective|discord) /etc/tinyvless/api.sh tuning "$m" "$arg" ;;
+						*) echo '{"error":"bad val"}' ;;
+					esac ;;
+				*) echo '{"error":"bad key"}' ;;
+				esac ;;
+			*) echo '{"error":"bad cmd"}' ;;
+		esac ;;
+	status)   /etc/tinyvless/api.sh status ;;
+	state)    /etc/tinyvless/api.sh state ;;
+	profiles) cat "$D/links.json" 2>/dev/null || echo '[]' ;;
+	mode)     case "$m" in selective|full|off) /etc/tinyvless/api.sh mode "$m" ;; *) echo '{"error":"bad mode"}' ;; esac ;;
+	power)    case "$v" in on) /etc/tinyvless/api.sh start ;; off) /etc/tinyvless/api.sh stop ;; *) echo '{"error":"bad"}' ;; esac ;;
+	*)        echo '{"error":"unknown"}' ;;
+esac

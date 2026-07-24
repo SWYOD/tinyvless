@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+set to [expr {[llength $argv] > 1 ? [lindex $argv 1] : 120}]
+set timeout 20
+if {[info exists ::env(RSSH_PASSWORD)]} {
+	set pw $::env(RSSH_PASSWORD)
+} else {
+	puts stderr "RSSH_PASSWORD not set (export it, or put it in scripts/rssh.local.env and source that file first)"
+	exit 1
+}
+set cmd [lindex $argv 0]
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password root@192.168.10.1 $cmd
+expect -re {[Pp]assword:}
+send "$pw\r"
+set timeout $to
+expect eof
+catch wait result
+exit [lindex $result 3]

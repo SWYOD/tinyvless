@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>tinyvless — SMS</title>
+<style>
+:root{ --acc:#3fb950; --acc-bd:#2ea043; --acc-bg:rgba(46,160,67,.13); --mut:#8b949e; --bd:rgba(139,148,158,.28); }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:#0d1117; color:#e6edf3; font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:14px 16px; }
+.wrap{ max-width:760px; margin:0 auto; }
+.tv-page-h{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 14px; }
+.tv-title-block{ display:flex; align-items:center; gap:10px; }
+.tv-title-block h2{ margin:0; display:flex; align-items:center; gap:9px; font-size:22px; }
+.tv-ic{ display:inline-flex; align-items:center; }
+.tv-ic svg{ display:block; }
+.tv-version{ font-size:12.5px; color:var(--mut); font-weight:500; }
+.tv-btn{ display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:9px; border:1.5px solid var(--bd); background:transparent; color:inherit; cursor:pointer; font-size:14px; font-weight:500; }
+.tv-btn:hover{ border-color:var(--mut); }
+.tv-btn.small{ padding:6px 11px; font-size:13px; }
+.tv-btn.refresh{ border-color:var(--acc-bd); background:var(--acc-bg); color:var(--acc); }
+.tv-btn.refresh:hover{ background:rgba(46,160,67,.2); }
+.tv-btn.acc{ border-color:var(--acc-bd); background:var(--acc-bg); color:var(--acc); }
+.tv-btn.danger{ border-color:rgba(248,81,73,.5); color:#f85149; }
+.tv-btn.danger:hover{ background:rgba(248,81,73,.1); }
+.tv-btn[disabled]{ opacity:.5; cursor:not-allowed; }
+a.tv-back{ color:var(--acc); text-decoration:none; font-size:13.5px; display:inline-flex; align-items:center; gap:5px; margin-bottom:14px; }
+.tv-hint{ font-size:12.5px; color:var(--mut); margin:0 0 12px; }
+.tv-toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 16px; }
+.tv-sms{ border:1px solid var(--bd); border-radius:12px; padding:14px 16px; margin:0 0 12px; background:rgba(127,127,127,.04); }
+.tv-sms .top{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+.tv-sms .sender{ font-weight:600; font-size:14.5px; }
+.tv-sms .time{ font-size:12px; color:var(--mut); white-space:nowrap; }
+.tv-sms .status{ font-size:11px; padding:1px 7px; border-radius:6px; border:1px solid var(--bd); color:var(--mut); margin-left:8px; }
+.tv-sms .text{ font-size:14.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+.tv-sms .actions{ margin-top:10px; text-align:right; }
+.tv-sms-code{ display:flex; align-items:center; gap:10px; margin:0 0 10px; padding:8px 12px; border-radius:9px; border:1.5px solid var(--acc-bd); background:var(--acc-bg); color:var(--acc); font-size:13.5px; }
+.tv-sms-code b{ font-size:18px; letter-spacing:.04em; }
+.tv-sms-code .tv-btn{ margin-left:auto; }
+.tv-sms-group{ border:1px solid var(--bd); border-radius:14px; padding:12px 14px; margin:0 0 14px; background:rgba(127,127,127,.03); }
+.tv-sms-group-head{ display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:14px; }
+.tv-sms-group-head .cnt{ font-size:11.5px; color:var(--mut); padding:1px 8px; border:1px solid var(--bd); border-radius:6px; }
+.tv-sms-group-head .sp{ flex:1 1 auto; }
+.tv-sms-group-head .tv-btn{ padding:4px 8px; }
+.tv-btn .tv-ic svg{ width:14px; height:14px; }
+.tv-sms-group .tv-sms{ margin-bottom:8px; }
+.tv-sms-group .tv-sms:last-child{ margin-bottom:0; }
+.tv-empty{ text-align:center; color:var(--mut); padding:40px 16px; font-size:14.5px; }
+@keyframes tvspin{ to{ transform:rotate(360deg); } }
+.tv-spin{ animation:tvspin .8s linear infinite; }
+.tv-loading{ min-height:calc(100vh - 28px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; color:#8b949e; text-align:center; padding:24px; }
+.tv-loading-brand{ color:#3fb950; animation:tvpulse 1.7s ease-in-out infinite; }
+.tv-loading-brand svg{ display:block; }
+.tv-loading-text{ margin:0; font-size:15px; letter-spacing:.02em; }
+@keyframes tvpulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.1); opacity:.8; } }
+</style>
+</head>
+<body>
+<div id="splash" class="tv-loading">
+	<div class="tv-loading-brand">
+		<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-1a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3z"/></svg>
+	</div>
+	<p class="tv-loading-text">Загрузка SMS…</p>
+</div>
+<div class="wrap" id="mainWrap" style="display:none">
+	<a class="tv-back" href="/tinyvless/">← К панели</a>
+	<div class="tv-page-h">
+		<div class="tv-title-block">
+			<h2><span class="tv-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-1a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3z"/></svg></span>SMS</h2>
+			<span class="tv-version">tinyvless</span>
+		</div>
+		<button class="tv-btn small refresh" id="btnRefresh">
+			<span class="tv-ic" id="refreshIc"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.05 11a8 8 0 1 1 .5 4m-.5 -4v4h4"/></svg></span>
+			<span>Обновить</span>
+		</button>
+	</div>
+	<p class="tv-hint">Читает SMS напрямую с модема через AT-команды (без сторонних приложений). Новые сообщения появятся после «Обновить».</p>
+	<div class="tv-toolbar">
+		<button class="tv-btn small" id="btnSort"><span class="tv-ic" id="sortIc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4 -4l4 4"/><path d="M7 4l0 9"/><path d="M13 16l4 4l4 -4"/><path d="M17 20l0 -9"/></svg></span><span id="sortTxt">Сначала новые</span></button>
+		<button class="tv-btn small" id="btnGroup"><span class="tv-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="4" y="14" width="7" height="7" rx="1"/><path d="M14 7h6"/><path d="M14 11h6"/><path d="M14 17h6"/><path d="M14 21h6"/></svg></span><span>Группировать по отправителю</span></button>
+		<button class="tv-btn small danger" id="btnClearAll"><span class="tv-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></span><span>Очистить всё</span></button>
+	</div>
+	<div id="list"></div>
+</div>
+<script>
+var CGI = '/cgi-bin/sms';
+var list = document.getElementById('list');
+var btnRefresh = document.getElementById('btnRefresh');
+var refreshIc = document.getElementById('refreshIc');
+var btnSort = document.getElementById('btnSort');
+var sortTxt = document.getElementById('sortTxt');
+var btnGroup = document.getElementById('btnGroup');
+var btnClearAll = document.getElementById('btnClearAll');
+
+var sortDesc = true;
+var groupMode = false;
+var lastItems = [];
+
+function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+
+function fmtTime(t){
+	// формат модема: "26/07/05,12:05:30+12" -> "05.07.26 12:05"
+	var m = /^(\d{2})\/(\d{2})\/(\d{2}),(\d{2}:\d{2}):\d{2}/.exec(t||'');
+	if (!m) return t || '';
+	return m[3] + '.' + m[2] + '.' + m[1] + ' ' + m[4];
+}
+
+function timeVal(t){
+	var m = /^(\d{2})\/(\d{2})\/(\d{2}),(\d{2}):(\d{2}):(\d{2})/.exec(t||'');
+	if (!m) return 0;
+	return Date.UTC(2000 + (+m[1]), (+m[2]) - 1, +m[3], +m[4], +m[5], +m[6]);
+}
+
+function extractCode(text){
+	var m = /\b(\d{4,8})\b/.exec(text || '');
+	return m ? m[1] : null;
+}
+
+function sortItems(items){
+	return items.slice().sort(function (a, b) {
+		var d = timeVal(a.time) - timeVal(b.time);
+		return sortDesc ? -d : d;
+	});
+}
+
+function renderCard(m){
+	var el = document.createElement('div');
+	el.className = 'tv-sms';
+	var code = extractCode(m.text);
+	var codeHtml = code ? ('<div class="tv-sms-code">Код: <b>' + esc(code) + '</b><button class="tv-btn small copy-code" type="button">Скопировать</button></div>') : '';
+	el.innerHTML =
+		'<div class="top">' +
+			'<span class="sender">' + esc(m.sender) + '<span class="status">' + esc(m.status) + '</span></span>' +
+			'<span class="time">' + esc(fmtTime(m.time)) + '</span>' +
+		'</div>' +
+		codeHtml +
+		'<div class="text">' + esc(m.text) + '</div>' +
+		'<div class="actions"><button class="tv-btn small danger">Удалить</button></div>';
+	if (code) {
+		el.querySelector('.copy-code').addEventListener('click', function (ev) {
+			var btn = ev.currentTarget;
+			if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code); }
+			var old = btn.textContent;
+			btn.textContent = 'Скопировано!';
+			setTimeout(function () { btn.textContent = old; }, 1500);
+		});
+	}
+	el.querySelector('.danger').addEventListener('click', function () { delMsg(m.indices || [m.index], el); });
+	return el;
+}
+
+function render(items){
+	lastItems = items || [];
+	list.innerHTML = '';
+	if (!lastItems.length){
+		list.innerHTML = '<div class="tv-empty">Нет сообщений.</div>';
+		return;
+	}
+	var sorted = sortItems(lastItems);
+	if (!groupMode) {
+		sorted.forEach(function (m) { list.appendChild(renderCard(m)); });
+		return;
+	}
+	// группировка по отправителю — карточка-родитель на каждого, сообщения внутри тем же порядком
+	var groups = [], bySender = {};
+	sorted.forEach(function (m) {
+		if (!bySender[m.sender]) { bySender[m.sender] = { sender: m.sender, items: [] }; groups.push(bySender[m.sender]); }
+		bySender[m.sender].items.push(m);
+	});
+	groups.forEach(function (g) {
+		var group = document.createElement('div');
+		group.className = 'tv-sms-group';
+		var head = document.createElement('div');
+		head.className = 'tv-sms-group-head';
+		head.innerHTML = '<b>' + esc(g.sender) + '</b><span class="cnt">' + g.items.length + '</span><span class="sp"></span>' +
+			'<button class="tv-btn small danger" type="button">Удалить всё</button>';
+		var allIdx = [];
+		g.items.forEach(function (m) { (m.indices || [m.index]).forEach(function (i) { allIdx.push(i); }); });
+		head.querySelector('button').addEventListener('click', function () {
+			if (!confirm('Удалить все сообщения от «' + g.sender + '» (' + g.items.length + ' шт.)?')) return;
+			fetch(CGI + '?a=delete&idx=' + encodeURIComponent(allIdx.join(','))).then(function () {
+				lastItems = lastItems.filter(function (m) { return allIdx.indexOf(m.index) === -1; });
+				render(lastItems);
+			});
+		});
+		group.appendChild(head);
+		g.items.forEach(function (m) { group.appendChild(renderCard(m)); });
+		list.appendChild(group);
+	});
+}
+
+function delMsg(indices, el){
+	if (!confirm('Удалить это сообщение?')) return;
+	fetch(CGI + '?a=delete&idx=' + encodeURIComponent(indices.join(','))).then(function(){
+		lastItems = lastItems.filter(function (m) { return (m.indices || [m.index]).join(',') !== indices.join(','); });
+		render(lastItems);
+	});
+}
+
+var firstLoad = true;
+function revealApp(){
+	if (!firstLoad) return;
+	firstLoad = false;
+	document.getElementById('splash').style.display = 'none';
+	document.getElementById('mainWrap').style.display = '';
+}
+function refresh(){
+	refreshIc.querySelector('svg').classList.add('tv-spin');
+	btnRefresh.setAttribute('disabled', '');
+	fetch(CGI + '?a=list').then(function(r){ return r.json(); }).then(function(items){
+		render(items);
+	}).catch(function(){
+		list.innerHTML = '<div class="tv-empty">Не удалось получить список — модем недоступен?</div>';
+	}).then(function(){
+		refreshIc.querySelector('svg').classList.remove('tv-spin');
+		btnRefresh.removeAttribute('disabled');
+		revealApp();
+	});
+}
+
+btnSort.addEventListener('click', function () {
+	sortDesc = !sortDesc;
+	sortTxt.textContent = sortDesc ? 'Сначала новые' : 'Сначала старые';
+	render(lastItems);
+});
+btnGroup.addEventListener('click', function () {
+	groupMode = !groupMode;
+	btnGroup.className = 'tv-btn small' + (groupMode ? ' acc' : '');
+	render(lastItems);
+});
+btnClearAll.addEventListener('click', function () {
+	if (!lastItems.length) return;
+	if (!confirm('Удалить ВСЕ сообщения (' + lastItems.length + ' шт.)? Это необратимо.')) return;
+	var allIdx = [];
+	lastItems.forEach(function (m) { (m.indices || [m.index]).forEach(function (i) { allIdx.push(i); }); });
+	fetch(CGI + '?a=delete&idx=' + encodeURIComponent(allIdx.join(','))).then(function () {
+		render([]);
+	});
+});
+
+btnRefresh.addEventListener('click', refresh);
+list.innerHTML = '<div class="tv-empty">Загрузка…</div>';
+refresh();
+</script>
+</body>
+</html>

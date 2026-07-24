@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tinyvless</title>
+<style>
+:root{ --txt:#e6edf3; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:#0d1117; color:var(--txt); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:14px; max-width:560px; margin:0 auto; }
+#app h2{ font-size:20px; }
+/* базовая стилизация LuCI-классов, которые использует морда */
+textarea,input[type=text],.cbi-input-text{ background:rgba(127,127,127,.08); color:var(--txt); border:1px solid rgba(139,148,158,.35); border-radius:8px; padding:8px 10px; font-size:14px; }
+textarea:focus,input:focus{ outline:none; border-color:#2ea043; }
+button{ font-family:inherit; }
+/* модалка (шим ui.showModal) */
+.modal-ov{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; z-index:1000; }
+.modal-box{ background:#161b22; border:1px solid rgba(139,148,158,.3); border-radius:14px; padding:18px 20px; width:100%; max-width:440px; max-height:90vh; overflow:auto; }
+.modal-box h4{ margin:0 0 12px; }
+/* тосты (шим ui.addNotification) */
+.toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:20px; max-width:90%; padding:11px 16px; border-radius:10px; z-index:1100; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.4); }
+.toast.info{ background:#1f6feb; color:#fff; } .toast.warning{ background:#9e6a03; color:#fff; } .toast.error{ background:#b62324; color:#fff; }
+.tv-loading{ color:#8b949e; padding:40px 0; text-align:center; }
+</style>
+</head>
+<body>
+<div id="app"><div class="tv-loading">Загрузка tinyvless…</div></div>
+<script>
+// ================= ШИМЫ LuCI-API поверх CGI /cgi-bin/tv =================
+// Позволяют грузить ТОТ ЖЕ код морды (app4.js), что и в LuCI, без дублирования.
+var CGI = '/cgi-bin/tv';
+var FMAP = {
+	'/etc/tinyvless/config': 'config',
+	'/etc/tinyvless/links.json': 'links',
+	'/etc/tinyvless/direct_domains.list': 'direct',
+	'/etc/tinyvless/tunnel_domains.list': 'tunnel',
+	'/etc/tinyvless/zapret_domains.list': 'zapret',
+	'/etc/tinyvless/testlink.txt': 'test'
+};
+
+function append(el, ch) {
+	if (ch == null || ch === false) return;
+	if (Array.isArray(ch)) { ch.forEach(function (c) { append(el, c); }); return; }
+	if (ch instanceof Node) { el.appendChild(ch); return; }
+	el.appendChild(document.createTextNode(String(ch)));
+}
+// E(tag, attrs, children) — совместимо с LuCI E()
+function E(tag, attrs, children) {
+	if (arguments.length === 2 && (Array.isArray(attrs) || attrs instanceof Node || typeof attrs === 'string')) { children = attrs; attrs = {}; }
+	attrs = attrs || {};
+	if (tag === 'style') { var s = document.createElement('style'); s.textContent = Array.isArray(children) ? children.join('') : (children || ''); return s; }
+	var el = document.createElement(tag);
+	for (var k in attrs) {
+		var v = attrs[k];
+		if (v == null) continue;
+		if (k === 'class' || k === 'className') el.className = v;
+		else if (k === 'style') el.style.cssText = v;
+		else if (typeof v === 'function') el.addEventListener(k, v);
+		else el.setAttribute(k, v);
+	}
+	append(el, children);
+	return el;
+}
+window.E = E;
+
+var fs = {
+	read: function (path) {
+		var f = FMAP[path]; if (!f) return Promise.reject('bad path');
+		return fetch(CGI + '?a=read&f=' + f, { cache: 'no-store' }).then(function (r) { return r.text(); });
+	},
+	write: function (path, data) {
+		var f = FMAP[path]; if (!f) return Promise.reject('bad path');
+		return fetch(CGI + '?a=write&f=' + f, { method: 'POST', body: data == null ? '' : String(data) }).then(function (r) { return r.json(); });
+	},
+	exec: function (path, args) {
+		args = args || [];
+		var q = 'a=exec&cmd=' + encodeURIComponent(args[0] || '');
+		if (args[1] != null) q += '&arg=' + encodeURIComponent(args[1]);
+		return fetch(CGI + '?' + q, { cache: 'no-store' }).then(function (r) { return r.text(); })
+			.then(function (t) { return { stdout: t, stderr: '', code: 0 }; });
+	}
+};
+
+var ui = {
+	showModal: function (title, content, cls) {
+		ui.hideModal();
+		var ov = E('div', { 'class': 'modal-ov', click: function (e) { if (e.target === ov) ui.hideModal(); } });
+		ov.id = 'tvmodal';
+		var box = E('div', { 'class': 'modal-box' + (cls ? ' ' + cls : '') });
+		if (title) box.appendChild(E('h4', {}, title));
+		append(box, content);
+		ov.appendChild(box);
+		document.body.appendChild(ov);
+		return box;
+	},
+	hideModal: function () { var m = document.getElementById('tvmodal'); if (m) m.remove(); },
+	addNotification: function (title, content, type) {
+		var t = E('div', { 'class': 'toast ' + (type || 'info') });
+		append(t, content); document.body.appendChild(t);
+		setTimeout(function () { t.remove(); }, 4000);
+	},
+	createHandlerFn: function (ctx, fn) { return function () { return fn.apply(ctx, arguments); }; }
+};
+
+var poll = { add: function (fn, interval) { try { fn(); } catch (e) {} setInterval(fn, (interval || 3) * 1000); } };
+var view = { extend: function (o) { return o; } };
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') ui.hideModal(); });
+
+// ================= загрузка кода морды и монтирование =================
+fetch('/luci-static/resources/view/tinyvless/app4.js', { cache: 'no-store' })
+	.then(function (r) { return r.text(); })
+	.then(function (src) {
+		var app = new Function('view', 'fs', 'ui', 'poll', 'E', src)(view, fs, ui, poll, E);
+		return Promise.resolve(app.load()).then(function (data) {
+			var node = app.render(data);
+			var root = document.getElementById('app');
+			root.innerHTML = '';
+			root.appendChild(node);
+		});
+	})
+	.catch(function (e) { document.getElementById('app').innerHTML = '<div class="tv-loading">Ошибка загрузки морды: ' + e + '</div>'; });
+</script>
+</body>
+</html>

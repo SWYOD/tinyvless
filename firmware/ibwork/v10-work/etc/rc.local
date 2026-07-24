@@ -1,0 +1,13 @@
+#!/bin/sh
+# Передний LED: снять стоковый netdev-триггер (иначе моргает от трафика) и выставить
+# начальное состояние по реальному статусу wwan. Дальнейшие переходы — hotplug.d/iface/30-frontled.
+echo none > /sys/class/leds/white:status/trigger 2>/dev/null
+echo none > /sys/class/leds/red:status/trigger 2>/dev/null
+if ubus call network.interface.wwan status 2>/dev/null | grep -q '"up": true'; then
+	echo 1 > /sys/class/leds/white:status/brightness 2>/dev/null
+	echo 0 > /sys/class/leds/red:status/brightness 2>/dev/null
+else
+	echo 0 > /sys/class/leds/white:status/brightness 2>/dev/null
+	echo 1 > /sys/class/leds/red:status/brightness 2>/dev/null
+fi
+exit 0

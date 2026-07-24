@@ -1,0 +1,33 @@
+{
+	"luci-app-tinyvless": {
+		"description": "Manage tinyvless VLESS router",
+		"read": {
+			"file": {
+				"/etc/tinyvless/config": [ "read" ],
+				"/etc/tinyvless/links.json": [ "read" ],
+				"/etc/tinyvless/direct_domains.list": [ "read" ],
+				"/etc/tinyvless/tunnel_domains.list": [ "read" ],
+				"/etc/tinyvless/poisoned_domains.list": [ "read" ],
+				"/etc/tinyvless/card_order.json": [ "read" ],
+				"/etc/tinyvless/speedtest_sources.json": [ "read" ],
+				"/etc/tinyvless/beta_flags.json": [ "read" ],
+				"/etc/tinyvless/poll_interval.json": [ "read" ],
+				"/etc/tinyvless/api.sh": [ "exec" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/etc/tinyvless/config": [ "write" ],
+				"/etc/tinyvless/links.json": [ "write" ],
+				"/etc/tinyvless/testlink.txt": [ "write" ],
+				"/etc/tinyvless/direct_domains.list": [ "write" ],
+				"/etc/tinyvless/tunnel_domains.list": [ "write" ],
+				"/etc/tinyvless/poisoned_domains.list": [ "write" ],
+				"/etc/tinyvless/card_order.json": [ "write" ],
+				"/etc/tinyvless/speedtest_sources.json": [ "write" ],
+				"/etc/tinyvless/beta_flags.json": [ "write" ],
+				"/etc/tinyvless/poll_interval.json": [ "write" ]
+			}
+		}
+	}
+}

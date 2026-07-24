@@ -1,0 +1,7 @@
+#!/bin/sh
+# Выполняется ОДИН раз при первой загрузке после прошивки (uci-defaults).
+# cachesize=300 — подтверждено памятью: 33-мин тест 0 OOM dnsmasq; 250 на марафоне 2026-07-08
+# убил dnsmasq (RSS 8.2МБ) → каскад → YouTube/Instagram отвалились. Только UCI!
+uci set dhcp.@dnsmasq[0].cachesize=300
+uci commit dhcp
+exit 0

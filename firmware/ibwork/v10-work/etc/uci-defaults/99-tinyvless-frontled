@@ -1,0 +1,5 @@
+#!/bin/sh
+# Снять стоковый триггер led_internet (netdev на white:status) — передним LED управляем сами
+# (rc.local + hotplug), чтобы он показывал СТАТУС связи ровным светом, а не моргал от трафика.
+uci -q delete system.led_internet && uci commit system
+exit 0

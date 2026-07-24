@@ -1,0 +1,39 @@
+# Принудительно В ТУННЕЛЬ (приоритет над ru_cidr/direct).
+# В режиме SELECT_LEVEL=high — это ЕДИНСТВЕННЫЙ список зарубежного трафика в туннель.
+# По одному домену в строке, # — комментарий.
+2ip.ru
+www.2ip.ru
+youtube.com
+googlevideo.com
+ytimg.com
+ggpht.com
+youtubei.googleapis.com
+google.com
+googleapis.com
+gstatic.com
+instagram.com
+www.instagram.com
+cdninstagram.com
+fbcdn.net
+facebook.com
+facebook.net
+twitter.com
+x.com
+openai.com
+chatgpt.com
+claude.ai
+anthropic.com
+discord.com
+discord.gg
+discordapp.com
+discordapp.net
+discord.media
+telegram.org
+t.me
+whatsapp.com
+netflix.com
+spotify.com
+github.com
+reddit.com
+wikipedia.org
+cloudflare.com

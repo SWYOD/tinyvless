@@ -1,0 +1,29 @@
+# tinyvless — конфигурация (правится через LuCI или вручную)
+# Публичный релиз: VLESS_LINK намеренно пуст — впиши свою ссылку через панель («Добавить профиль»)
+# или сюда вручную. Формат: vless://UUID@host:port?type=ws&path=%2Fpath&host=host&security=tls&sni=host
+VLESS_LINK=''
+MODE=selective
+REDIR_PORT=1082
+TPROXY_PORT=1083
+# RU_SET=1 — полный гео-набор (~2000+ подсетей, ~2.4МБ RAM). Правильный дефолт:
+# нагружает туннель ТОЛЬКО реально зарубежным трафиком; RU-сайты идут напрямую.
+# RU_SET=0 испробован под research-нагрузкой — давал ОБРАТНЫЙ эффект: без CIDR-набора
+# весь трафик (включая RU-сайты вне 47 доменов) шёл через туннель → tinyvless OOM.
+RU_SET=1
+# SELECT_LEVEL: low = RU/direct напрямую, остальное в туннель (классика).
+#               high = только tunnel_domains.list в туннель, всё остальное напрямую (экономия RAM).
+SELECT_LEVEL=low
+# UDP_TUNNEL: full = весь UDP через tproxy; selective = домены из udp_tunnel_domains.list (+ Discord-порты).
+UDP_TUNNEL=selective
+# BYPASS_MAC — MAC клиентов без проксирования (через пробел).
+BYPASS_MAC=''
+
+# DNS-резолв
+# DNS_PRIMARY/DNS_FALLBACK — обычные (не-DoH) резолверы, используются для всего, кроме доменов
+# из poisoned_domains.list. Дефолт — два независимых адреса Яндекс DNS.
+DNS_PRIMARY=77.88.8.8
+DNS_FALLBACK=77.88.8.1
+# DOH_MODE: off = только PRIMARY/FALLBACK, DoH не используется вообще.
+#           smart = PRIMARY/FALLBACK для всего + DoH точечно для доменов из poisoned_domains.list.
+#           full = ВСЁ через DoH-туннель (старое поведение, максимально безопасно но медленнее).
+DOH_MODE=smart

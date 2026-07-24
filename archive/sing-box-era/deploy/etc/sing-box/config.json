@@ -1,0 +1,31 @@
+{
+  "log": { "level": "warn", "timestamp": true },
+  "dns": {
+    "servers": [
+      { "tag": "proxy-dns", "address": "https://1.1.1.1/dns-query", "detour": "vless-out" },
+      { "tag": "direct-dns", "address": "223.5.5.5", "detour": "direct" }
+    ],
+    "final": "proxy-dns",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    { "type": "tproxy", "tag": "tproxy-in", "listen": "0.0.0.0", "listen_port": 7893, "sniff": true }
+  ],
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-out",
+      "server": "REPLACE_SERVER",
+      "server_port": 443,
+      "uuid": "REPLACE_UUID",
+      "tls": { "enabled": true, "server_name": "REPLACE_SNI" },
+      "transport": { "type": "ws", "path": "REPLACE_PATH", "headers": { "Host": "REPLACE_SNI" } }
+    },
+    { "type": "direct", "tag": "direct" }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "rules": [ { "ip_is_private": true, "outbound": "direct" } ],
+    "final": "vless-out"
+  }
+}
