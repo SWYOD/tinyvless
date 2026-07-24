@@ -41,8 +41,7 @@
 
 ## Сборка образа
 
-Требуется Docker (на этом Маке — через [colima](https://github.com/abiosoft/colima), не
-Docker Desktop):
+Требуется Docker:
 
 ```sh
 cd firmware/ibwork/v10-work
