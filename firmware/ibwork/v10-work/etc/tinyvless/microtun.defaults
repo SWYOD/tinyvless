@@ -18,3 +18,9 @@ DIAL_SEM=64
 POOL_BUF_KB=4
 TLS_CACHE=128
 GO_MEM_LIMIT_MB=18
+# Опрос модема (tvled) и здоровья сети провайдера (net-watchdog) — общий AT_TIMEOUT_SEC,
+# оба демона по очереди делят один AT-порт через flock.
+LED_POLL_INTERVAL=8
+NETWATCHDOG_POLL_INTERVAL=30
+AT_TIMEOUT_SEC=12
+NETCHECK_TARGET=ya.ru

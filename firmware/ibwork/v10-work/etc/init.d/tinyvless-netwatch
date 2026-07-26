@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+# tinyvless-netwatch — procd-обёртка для net-watchdog.sh (сигнал модема + здоровье сети
+# провайдера, состояние для карточки "Модем" и баннера плохой связи).
+
+USE_PROCD=1
+START=98
+STOP=89
+
+start_service() {
+	procd_open_instance
+	procd_set_param command /etc/tinyvless/net-watchdog.sh
+	procd_set_param respawn 3600 5 0
+	procd_set_param nice 19
+	procd_close_instance
+}
+
+stop_service() {
+	killall net-watchdog.sh 2>/dev/null
+}

@@ -19,6 +19,10 @@ var CARD_ORDER_FILE = '/etc/tinyvless/card_order.json';
 var SPEEDTEST_SOURCES_FILE = '/etc/tinyvless/speedtest_sources.json';
 var BETA_FLAGS_FILE = '/etc/tinyvless/beta_flags.json';
 var POLL_INTERVAL_FILE = '/etc/tinyvless/poll_interval.json';
+var MODEM_FIELDS_FILE = '/etc/tinyvless/modem_card_fields.json';
+// modem_card_fields.json: массив СКРЫТЫХ ключей (пусто/отсутствует = все поля видны).
+// Ключи: operator, net_type, signal, model, reg_data, reg_voice, health, checked_ago,
+// btn_led, banner (последний — глобальный баннер плохой связи, не поле карточки).
 var POLL_INTERVAL_DEFAULT = 8;
 var SPEEDTEST_SOURCES_DEFAULT = {
 	tunnel: [{ label: 'Cloudflare', url: 'https://speed.cloudflare.com', type: 'cf' }, { label: 'Google', url: 'https://www.google.com', type: 'generic' }],
@@ -83,7 +87,9 @@ var ICONS = {
 	download: '<path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/>',
 	upload: '<path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 9l5 -5l5 5"/><path d="M12 4l0 12"/>',
 	chevronDown: '<path d="M6 9l6 6l6 -6"/>',
-	chevronUp: '<path d="M6 15l6 -6l6 6"/>'
+	chevronUp: '<path d="M6 15l6 -6l6 6"/>',
+	bulb: '<path d="M12 2a7 7 0 0 0 -7 7c0 2.4 1.2 4.1 2.5 5.3.8 .8 1.5 1.7 1.5 2.7v1h6v-1c0 -1 .7 -1.9 1.5 -2.7c1.3 -1.2 2.5 -2.9 2.5 -5.3a7 7 0 0 0 -7 -7z"/><path d="M9 18h6"/><path d="M10 21h4"/>',
+	alertTriangle: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86l-8.47 14.14a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71 -3l-8.47 -14.14a2 2 0 0 0 -3.42 0z"/>'
 };
 
 function ic(name, size, cls) {
@@ -271,6 +277,10 @@ function fetchSubscription(url) {
 var STYLE = [
 	'.tv { --acc:#3fb950; --acc-bd:#2ea043; --acc-bg:rgba(46,160,67,.13); --mut:#8b949e; --bd:rgba(139,148,158,.28); }',
 	'.tv-wrap{ max-width:1440px; margin:0 auto; }',
+	// баннер плохой связи (net-watchdog) — вверху страницы, вне грида; 2 состояния через модификатор
+	'.tv-banner{ display:flex; align-items:center; gap:10px; border-radius:10px; padding:10px 14px; margin:0 0 14px; font-size:14px; }',
+	'.tv-banner.warn{ background:rgba(210,153,34,.13); border:1px solid #9e6a03; color:#d29922; }',
+	'.tv-banner.bad{ background:rgba(248,81,73,.13); border:1px solid #f85149; color:#f85149; }',
 	'.tv-grid{ display:grid; grid-template-columns:1fr; gap:16px; align-items:stretch; }',
 	'.tv-grid > .tv-card,.tv-grid > .tv-status{ margin:0; }',
 	'.tv-grid > .tv-status{ grid-column:1 / -1; }',
@@ -289,8 +299,13 @@ var STYLE = [
 	'.tv .tv-ic{ display:inline-flex; align-items:center; vertical-align:middle; }',
 	'.tv .tv-ic svg{ display:block; }',
 	'.tv-card{ border:1px solid var(--bd); border-radius:12px; padding:16px 18px; margin:0 0 16px; background:rgba(127,127,127,.04); min-width:0; }',
-	'.tv-card > .tv-h{ display:flex; align-items:center; justify-content:space-between; margin:0 0 14px; }',
-	'.tv-card .tv-h h3{ margin:0; font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; }',
+	'.tv-card > .tv-h{ display:flex; align-items:center; justify-content:space-between; gap:8px 12px; margin:0 0 14px; min-width:0; }',
+	'.tv-card .tv-h h3{ margin:0; font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; flex:0 1 auto; min-width:0; overflow:hidden; }',
+	// группа кнопок в шапке карточки — всегда в один ряд с заголовком; когда не помещаются,
+	// кнопки СЖИМАЮТСЯ (не переносятся), текст внутри обрезается многоточием.
+	'.tv-h-actions{ display:flex; gap:8px; flex:0 1 auto; min-width:0; justify-content:flex-end; }',
+	'.tv-h-actions .tv-btn{ white-space:nowrap; flex:0 1 auto; min-width:0; }',
+	'.tv-h-actions .tv-btn-txt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }',
 	'.tv-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }',
 	'.tv-row > .tv-btn{ flex:0 0 auto; }',
 	'.tv-power-row{ flex-wrap:nowrap; gap:8px; }',
@@ -523,7 +538,8 @@ return view.extend({
 			fs.read(CARD_ORDER_FILE).catch(function () { return ''; }),
 			fs.read(SPEEDTEST_SOURCES_FILE).catch(function () { return ''; }),
 			fs.read(BETA_FLAGS_FILE).catch(function () { return ''; }),
-			fs.read(POLL_INTERVAL_FILE).catch(function () { return ''; })
+			fs.read(POLL_INTERVAL_FILE).catch(function () { return ''; }),
+			fs.read(MODEM_FIELDS_FILE).catch(function () { return ''; })
 		]);
 	},
 
@@ -544,7 +560,8 @@ return view.extend({
 				v = parseInt(v, 10);
 				if (!v || v < 4 || v > 120) return POLL_INTERVAL_DEFAULT;
 				return v;
-			})()
+			})(),
+			modemHidden: (function () { try { var a = JSON.parse(data[11] || ''); return Array.isArray(a) ? a : []; } catch (e) { return []; } })()
 		};
 
 		// state из api.sh
@@ -1688,6 +1705,8 @@ return view.extend({
 		var elNetRegData = E('span', {}, '—');
 		var elNetRegVoice = E('span', {}, '—');
 		var elNetModel = E('span', {}, '—');
+		var elNetHealth = E('span', {}, '—');
+		var elNetCheckedAgo = E('span', {}, '—');
 		var elNetErr = E('div', { style: 'color:#f85149;font-size:13px;margin-top:10px;display:none' });
 		var netBusy = false;
 		function netRefresh() {
@@ -1713,20 +1732,70 @@ return view.extend({
 				btnNetRefresh.appendChild(document.createTextNode(' Обновить'));
 			});
 		}
+		var ledBusy = false;
+		function ledRefresh() {
+			if (ledBusy) return;
+			ledBusy = true; btnLedRefresh.setAttribute('disabled', '');
+			fs.exec('/etc/tinyvless/api.sh', ['led_refresh']).catch(function () {}).then(function () {
+				ledBusy = false; btnLedRefresh.removeAttribute('disabled');
+			});
+		}
+		// баннер плохой связи (вверху страницы, вне грида) — обновляется вместе с netcheck
+		var elBanner = E('div', { 'class': 'tv-banner', style: 'display:none' }, [ic('alertTriangle', 18), E('span', { 'class': 'tv-banner-txt' })]);
+		function fmtAgo(ts) {
+			if (!ts) return '—';
+			var s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+			if (s < 60) return s + ' секунд назад';
+			if (s < 3600) return Math.floor(s / 60) + ' мин назад';
+			return Math.floor(s / 3600) + ' ч назад';
+		}
+		function pollNetcheck() {
+			return fs.exec('/etc/tinyvless/api.sh', ['netcheck']).then(function (r) {
+				var nc; try { nc = JSON.parse((r.stdout || '').trim()); } catch (e) { nc = null; }
+				if (!nc || nc.error) { elNetHealth.textContent = '—'; elNetCheckedAgo.textContent = '—'; return; }
+				elNetHealth.textContent = nc.ping_ok
+					? ('ping ' + (nc.ping_detail || 'ok') + (nc.dns_ok ? ', DNS ок' : ', DNS не отвечает'))
+					: '⛔ нет ответа от ' + (nc.target || 'цели проверки');
+				elNetCheckedAgo.textContent = fmtAgo(nc.checked_at);
+				if (st.modemHidden.indexOf('banner') !== -1 || nc.state === 'ok' || !nc.state) {
+					elBanner.style.display = 'none';
+					return;
+				}
+				elBanner.className = 'tv-banner ' + (nc.state === 'bad' ? 'bad' : 'warn');
+				elBanner.querySelector('.tv-banner-txt').textContent = nc.state === 'bad'
+					? ('Нет связи с провайдером — ping до ' + (nc.target || '') + ' не проходит')
+					: ('Слабый сигнал — ' + (nc.signal_pct != null ? nc.signal_pct + '%' : '?') + ' (' + (nc.signal_dbm || '?') + ' dBm), возможны обрывы');
+				elBanner.style.display = 'flex';
+			}).catch(function () {});
+		}
+		poll.add(pollNetcheck, st.pollInterval);
 		var btnNetRefresh = E('button', { 'class': 'tv-btn small acc', click: ui.createHandlerFn(this, netRefresh) }, [ic('refresh', 14), E('span', {}, ' Обновить')]);
+		var btnLedRefresh = E('button', { 'class': 'tv-btn small', title: 'Обновить светодиоды', click: ui.createHandlerFn(this, ledRefresh) }, [ic('bulb', 14), E('span', { 'class': 'tv-btn-txt' }, ' Светодиоды')]);
+		var NET_STATS = [
+			{ key: 'operator', node: mkStat('Оператор', elNetOp) },
+			{ key: 'net_type', node: mkStat('Тип сети', elNetType) },
+			{ key: 'signal', node: mkStat('Сигнал', elNetSignal) },
+			{ key: 'model', node: mkStat('Модель модема', elNetModel) },
+			{ key: 'reg_data', node: mkStat('Регистрация (данные)', elNetRegData) },
+			{ key: 'reg_voice', node: mkStat('Регистрация (голос/SMS)', elNetRegVoice) },
+			{ key: 'health', node: mkStat('Здоровье сети', elNetHealth) },
+			{ key: 'checked_ago', node: mkStat('Проверка была', elNetCheckedAgo) }
+		];
+		var netHeaderBtns = [
+			{ key: 'btn_led', node: btnLedRefresh },
+			{ key: 'always', node: btnNetRefresh }
+		];
 		var netCard = E('div', { 'class': 'tv-card' }, [
-			E('div', { 'class': 'tv-h' }, [E('h3', {}, [ic('signal', 18), E('span', {}, 'Модем')]), btnNetRefresh]),
-			E('div', { 'class': 'tv-stat-grid tv-stat-grid-fixed2' }, [
-				mkStat('Оператор', elNetOp),
-				mkStat('Тип сети', elNetType),
-				mkStat('Сигнал', elNetSignal),
-				mkStat('Модель модема', elNetModel),
-				mkStat('Регистрация (данные)', elNetRegData),
-				mkStat('Регистрация (голос/SMS)', elNetRegVoice)
+			E('div', { 'class': 'tv-h' }, [E('h3', {}, [ic('signal', 18), E('span', {}, 'Модем')]),
+				E('div', { 'class': 'tv-h-actions' }, netHeaderBtns.filter(function (b) { return st.modemHidden.indexOf(b.key) === -1; }).map(function (b) { return b.node; }))
 			]),
+			E('div', { 'class': 'tv-stat-grid tv-stat-grid-fixed2' },
+				NET_STATS.filter(function (s) { return st.modemHidden.indexOf(s.key) === -1; }).map(function (s) { return s.node; })
+			),
 			elNetErr
 		]);
 		netRefresh();
+		pollNetcheck();
 
 		// -- карточка speedtest: ДВОЙНОЙ тест (через туннель socks5 127.0.0.1:1080 и напрямую)
 		// с живым прогрессом — вместо одного долгого блокирующего запроса гоняем несколько
@@ -1965,6 +2034,7 @@ return view.extend({
 			E('style', {}, STYLE),
 			elSplashOv,
 			E('div', { 'class': 'tv-wrap' }, [
+				elBanner,
 				E('div', { 'class': 'tv-page-h' }, [
 					E('div', { 'class': 'tv-title-block' }, [
 						E('h2', {}, [ic('shield', 26), 'tinyvless']),

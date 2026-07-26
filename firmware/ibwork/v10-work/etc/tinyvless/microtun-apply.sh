@@ -72,4 +72,20 @@ if [ "$DNSMASQ_CHANGED" = "1" ]; then
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1
 fi
 
-echo "microtun-apply: ok forward_max=$dfm cache=$cache ports=${redir}/${tproxy} dnsmasq_restarted=$DNSMASQ_CHANGED"
+# tvled — compiled-loop, читает свой env один раз при старте (в отличие от net-watchdog.sh,
+# который перечитывает microtun.conf на каждом обороте сам) — рестартим ТОЛЬКО если реально
+# изменились его настройки, тем же diff-gated паттерном что dnsmasq выше.
+LEDWD_MARK=/tmp/.tv_ledwd_last
+led_poll=$(get_mt LED_POLL_INTERVAL 8)
+at_timeout=$(get_mt AT_TIMEOUT_SEC 12)
+new_ledwd_mark="${led_poll}:${at_timeout}"
+old_ledwd_mark=""
+[ -f "$LEDWD_MARK" ] && old_ledwd_mark=$(cat "$LEDWD_MARK" 2>/dev/null)
+TVLED_RESTARTED=0
+if [ "$new_ledwd_mark" != "$old_ledwd_mark" ]; then
+	echo "$new_ledwd_mark" > "$LEDWD_MARK"
+	/etc/init.d/tvled restart >/dev/null 2>&1
+	TVLED_RESTARTED=1
+fi
+
+echo "microtun-apply: ok forward_max=$dfm cache=$cache ports=${redir}/${tproxy} dnsmasq_restarted=$DNSMASQ_CHANGED tvled_restarted=$TVLED_RESTARTED"

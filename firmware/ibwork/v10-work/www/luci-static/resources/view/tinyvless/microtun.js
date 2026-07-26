@@ -60,6 +60,16 @@ var BLOCKS = [
 		]
 	},
 	{
+		title: 'Опрос модема и связи',
+		hint: 'tvled (задние LED) и net-watchdog (здоровье сети провайдера) делят один AT-порт по очереди — общий таймаут ждёт ответа модема на обоих. Смена интервала/таймаута рестартит tvled; net-watchdog подхватывает новые значения на следующем цикле сам.',
+		keys: [
+			{ k: 'LED_POLL_INTERVAL', label: 'Интервал опроса светодиодов (с)', type: 'number' },
+			{ k: 'NETWATCHDOG_POLL_INTERVAL', label: 'Интервал опроса net-watchdog (с)', type: 'number' },
+			{ k: 'AT_TIMEOUT_SEC', label: 'Таймаут AT-команды (с)', type: 'number' },
+			{ k: 'NETCHECK_TARGET', label: 'Домен/IP для ping+nslookup health-чека', type: 'text' }
+		]
+	},
+	{
 		title: 'tinyvless binary (только чтение)',
 		hint: 'Задаётся при сборке бинаря. Для справки.',
 		readonly: true,

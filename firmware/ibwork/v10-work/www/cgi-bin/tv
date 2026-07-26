@@ -68,7 +68,7 @@ case "$a" in
 		else echo '{"error":"bad file"}'; fi ;;
 	exec)
 		case "$cmd" in
-			status|state|restart|start|stop|poweroff|reboot|domains|dnsapply|testlink|clients|microtun_get|microtun_reset|netinfo|log) /etc/tinyvless/api.sh "$cmd" ;;
+			status|state|restart|start|stop|poweroff|reboot|domains|dnsapply|testlink|clients|microtun_get|microtun_reset|netinfo|netcheck|led_refresh|log) /etc/tinyvless/api.sh "$cmd" ;;
 			speedtest_ping)
 				case "$m" in tunnel|direct) [ -n "$arg" ] && /etc/tinyvless/api.sh speedtest_ping "$m" "$arg" "$t" || echo '{"error":"no url"}' ;; *) echo '{"error":"bad via"}' ;; esac ;;
 			speedtest_dl_chunk)

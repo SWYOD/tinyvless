@@ -179,12 +179,14 @@ case "$1" in
 		TV_REDIR_PORT= TV_TPROXY_PORT= /etc/tinyvless/tvroute.sh purge >/dev/null 2>&1
 		sync
 		echo '{"ok":true}'
+		[ -x /etc/tinyvless/led-blink-shutdown.sh ] && /etc/tinyvless/led-blink-shutdown.sh >/dev/null 2>&1 &
 		( sleep 2; /sbin/poweroff ) >/dev/null 2>&1 &
 		;;
 	reboot)
 		# перезагрузка OpenWrt (не путать с restart = рестарт tinyvless).
 		sync
 		echo '{"ok":true}'
+		[ -x /etc/tinyvless/led-blink-shutdown.sh ] && /etc/tinyvless/led-blink-shutdown.sh >/dev/null 2>&1 &
 		( sleep 1; /sbin/reboot ) >/dev/null 2>&1 &
 		;;
 	autostart)
@@ -213,6 +215,17 @@ case "$1" in
 	netinfo)
 		# диагностика модема (сигнал/оператор/тип сети/регистрация) для карточки "Модем"
 		[ -x /usr/bin/atcmd ] && /usr/bin/atcmd net-info-json 2>/dev/null || echo '{"error":"atcmd unavailable"}'
+		;;
+	netcheck)
+		# состояние net-watchdog (сигнал + здоровье сети провайдера) — читаем ГОТОВЫЙ
+		# state-файл, не гоняем живой ping/nslookup на каждый поллинг панели.
+		STATE=/tmp/.tv_netcheck.json
+		[ -f "$STATE" ] && cat "$STATE" || echo '{"error":"no data yet"}'
+		;;
+	led_refresh)
+		# кнопка "Обновить светодиоды" — внеочередной опрос сигнала + обновление 3 задних LED,
+		# не дожидаясь следующего цикла демона tvled.
+		[ -x /etc/tinyvless/led-refresh.sh ] && /etc/tinyvless/led-refresh.sh || echo '{"error":"led-refresh unavailable"}'
 		;;
 	log)
 		# сворачиваемый мини-журнал в панели мониторинга — только по клику, не на поллинге

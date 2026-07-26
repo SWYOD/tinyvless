@@ -14,12 +14,47 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const pollInterval = 8 * time.Second
+// atLockPath — общий с atcmd флок на физический AT-порт (см. комментарий в src/atcmd/main.go).
+const atLockPath = "/tmp/.tv_atport.lock"
+
+// pollInterval/atTimeout настраиваются через TV_LED_POLL_SEC/TV_AT_TIMEOUT_SEC (microtun.conf
+// LED_POLL_INTERVAL/AT_TIMEOUT_SEC), пробрасываются в init.d-обёртке. Дефолты — прежнее поведение.
+var (
+	pollInterval = 8 * time.Second
+	atTimeout    = 12 * time.Second
+)
 
 var (
 	ledPaths      = []string{"/sys/class/leds/white:signal1/brightness", "/sys/class/leds/white:signal2/brightness", "/sys/class/leds/white:signal3/brightness"}
 	candidatePorts = []string{"/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyUSB2", "/dev/ttyUSB3"}
 )
+
+func init() {
+	if v := os.Getenv("TV_LED_POLL_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			pollInterval = time.Duration(n) * time.Second
+		}
+	}
+	if v := os.Getenv("TV_AT_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			atTimeout = time.Duration(n) * time.Second
+		}
+	}
+}
+
+// withATLock — см. src/atcmd/main.go: сериализует доступ к AT-порту между tvled и atcmd.
+func withATLock(fn func() (string, error)) (string, error) {
+	lf, err := os.OpenFile(atLockPath, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return fn()
+	}
+	defer lf.Close()
+	if err := unix.Flock(int(lf.Fd()), unix.LOCK_EX); err != nil {
+		return fn()
+	}
+	defer unix.Flock(int(lf.Fd()), unix.LOCK_UN)
+	return fn()
+}
 
 func setRaw(fd int) error {
 	t, err := unix.IoctlGetTermios(fd, unix.TCGETS)
@@ -41,6 +76,12 @@ func setRaw(fd int) error {
 // atQuery открывает порт, шлёт AT-команду, ждёт ответ (до timeout). Открывает заново на
 // каждый вызов — модем может отвалиться/переподключиться, стабильнее держать порт недолго.
 func atQuery(port, cmd, waitFor string, timeout time.Duration) (string, error) {
+	return withATLock(func() (string, error) {
+		return atQueryRaw(port, cmd, waitFor, timeout)
+	})
+}
+
+func atQueryRaw(port, cmd, waitFor string, timeout time.Duration) (string, error) {
 	f, err := os.OpenFile(port, os.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return "", err
@@ -129,7 +170,7 @@ func main() {
 	}
 	log.Printf("tvled: AT-порт найден: %s", port)
 	for {
-		resp, err := atQuery(port, "AT+CSQ", "+CSQ", 2*time.Second)
+		resp, err := atQuery(port, "AT+CSQ", "+CSQ", atTimeout)
 		if err != nil {
 			setLEDs(0) // модем недоступен — гасим индикатор, не гадаем
 			time.Sleep(pollInterval)

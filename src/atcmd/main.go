@@ -20,6 +20,39 @@ import (
 
 var candidatePorts = []string{"/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyUSB2", "/dev/ttyUSB3"}
 
+// atLockPath — общий с tvled флок на физический AT-порт: только один процесс говорит с
+// модемом одновременно (второй ждёт своей очереди, не толкается с первым посреди AT-обмена).
+const atLockPath = "/tmp/.tv_atport.lock"
+
+// atTimeout — таймаут ожидания ответа на AT-команду, настраивается через TV_AT_TIMEOUT_SEC
+// (microtun.conf AT_TIMEOUT_SEC), общий с tvled. Дефолт 12с — с запасом на медленный ответ
+// модема сразу после загрузки/под нагрузкой (короткий таймаут даёт ложный "не удалось опросить").
+var atTimeout = 12 * time.Second
+
+func init() {
+	if v := os.Getenv("TV_AT_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			atTimeout = time.Duration(n) * time.Second
+		}
+	}
+}
+
+// withATLock сериализует доступ к AT-порту между atcmd и tvled через flock на общий файл.
+// Если лок почему-то недоступен (например /tmp не смонтирован) — не блокируем диагностику,
+// выполняем без сериализации, лучше рискнуть гонкой, чем не отвечать вообще.
+func withATLock(fn func() (string, error)) (string, error) {
+	lf, err := os.OpenFile(atLockPath, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return fn()
+	}
+	defer lf.Close()
+	if err := unix.Flock(int(lf.Fd()), unix.LOCK_EX); err != nil {
+		return fn()
+	}
+	defer unix.Flock(int(lf.Fd()), unix.LOCK_UN)
+	return fn()
+}
+
 func setRaw(fd int) error {
 	t, err := unix.IoctlGetTermios(fd, unix.TCGETS)
 	if err != nil {
@@ -38,6 +71,12 @@ func setRaw(fd int) error {
 }
 
 func atQuery(port, cmd, waitFor string, timeout time.Duration) (string, error) {
+	return withATLock(func() (string, error) {
+		return atQueryRaw(port, cmd, waitFor, timeout)
+	})
+}
+
+func atQueryRaw(port, cmd, waitFor string, timeout time.Duration) (string, error) {
 	f, err := os.OpenFile(port, os.O_RDWR|unix.O_NOCTTY|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return "", err
@@ -139,7 +178,7 @@ func getNetInfo(port string) netInfo {
 	var ni netInfo
 	ni.SignalRSSI = -1
 
-	if resp, _ := atQuery(port, "AT+CSQ", "OK", 3*time.Second); true {
+	if resp, _ := atQuery(port, "AT+CSQ", "OK", atTimeout); true {
 		if m := reCSQ.FindStringSubmatch(resp); m != nil {
 			rssi, _ := strconv.Atoi(m[1])
 			ni.SignalRSSI = rssi
@@ -157,8 +196,8 @@ func getNetInfo(port string) netInfo {
 		}
 	}
 
-	atQuery(port, "AT+COPS=3,0", "OK", 2*time.Second)
-	if resp, _ := atQuery(port, "AT+COPS?", "OK", 3*time.Second); true {
+	atQuery(port, "AT+COPS=3,0", "OK", atTimeout)
+	if resp, _ := atQuery(port, "AT+COPS?", "OK", atTimeout); true {
 		if m := reCOPS.FindStringSubmatch(resp); m != nil {
 			ni.Operator = m[1]
 			act, _ := strconv.Atoi(m[2])
@@ -166,24 +205,24 @@ func getNetInfo(port string) netInfo {
 		}
 	}
 
-	if resp, _ := atQuery(port, "AT+CEREG?", "OK", 2*time.Second); true {
+	if resp, _ := atQuery(port, "AT+CEREG?", "OK", atTimeout); true {
 		if m := reCEREG.FindStringSubmatch(resp); m != nil {
 			ni.CEReg, _ = strconv.Atoi(m[1])
 		}
 	}
-	if resp, _ := atQuery(port, "AT+CREG?", "OK", 2*time.Second); true {
+	if resp, _ := atQuery(port, "AT+CREG?", "OK", atTimeout); true {
 		if m := reCREG.FindStringSubmatch(resp); m != nil {
 			ni.CReg, _ = strconv.Atoi(m[1])
 		}
 	}
 
-	if resp, err := atQuery(port, "AT^SYSINFOEX", "OK", 2*time.Second); err == nil {
+	if resp, err := atQuery(port, "AT^SYSINFOEX", "OK", atTimeout); err == nil {
 		if qs := reQuoted.FindAllStringSubmatch(resp, -1); len(qs) > 0 {
 			ni.NetType = qs[len(qs)-1][1]
 		}
 	}
 
-	if resp, err := atQuery(port, "AT+CGMM", "OK", 2*time.Second); err == nil {
+	if resp, err := atQuery(port, "AT+CGMM", "OK", atTimeout); err == nil {
 		lines := strings.Split(strings.ReplaceAll(resp, "\r", ""), "\n")
 		for _, l := range lines {
 			l = strings.TrimSpace(l)
@@ -260,15 +299,15 @@ func main() {
 		enc, _ := json.Marshal(ni)
 		fmt.Println(string(enc))
 	case "sms-list":
-		atQuery(port, "AT+CMGF=1", "OK", 2*time.Second) // текстовый режим SMS
-		resp, err := atQuery(port, `AT+CMGL="ALL"`, "OK", 8*time.Second)
+		atQuery(port, "AT+CMGF=1", "OK", atTimeout) // текстовый режим SMS
+		resp, err := atQuery(port, `AT+CMGL="ALL"`, "OK", atTimeout)
 		fmt.Println(resp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "warn:", err)
 		}
 	case "sms-list-json":
-		atQuery(port, "AT+CMGF=1", "OK", 2*time.Second)
-		resp, err := atQuery(port, `AT+CMGL="ALL"`, "OK", 8*time.Second)
+		atQuery(port, "AT+CMGF=1", "OK", atTimeout)
+		resp, err := atQuery(port, `AT+CMGL="ALL"`, "OK", atTimeout)
 		msgs := parseSMSList(resp)
 		if msgs == nil {
 			msgs = []smsMsg{}
@@ -283,8 +322,8 @@ func main() {
 			fmt.Println("нужен индекс сообщения")
 			os.Exit(1)
 		}
-		atQuery(port, "AT+CMGF=1", "OK", 2*time.Second)
-		resp, err := atQuery(port, "AT+CMGR="+os.Args[2], "OK", 4*time.Second)
+		atQuery(port, "AT+CMGF=1", "OK", atTimeout)
+		resp, err := atQuery(port, "AT+CMGR="+os.Args[2], "OK", atTimeout)
 		fmt.Println(resp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "warn:", err)
@@ -300,7 +339,7 @@ func main() {
 			if idx == "" {
 				continue
 			}
-			resp, err := atQuery(port, "AT+CMGD="+idx, "OK", 3*time.Second)
+			resp, err := atQuery(port, "AT+CMGD="+idx, "OK", atTimeout)
 			fmt.Println(resp)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "warn:", err)
@@ -308,7 +347,7 @@ func main() {
 		}
 	default:
 		cmd := strings.Join(os.Args[1:], " ")
-		resp, err := atQuery(port, cmd, "OK", 5*time.Second)
+		resp, err := atQuery(port, cmd, "OK", atTimeout)
 		fmt.Println(resp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "warn:", err)

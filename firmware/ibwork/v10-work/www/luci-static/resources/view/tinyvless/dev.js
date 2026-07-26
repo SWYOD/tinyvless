@@ -3,6 +3,17 @@
 // Первый блок: beta-метки блоков главной панели (задел под дальнейшую кастомизацию/инструменты).
 
 var BETA_FLAGS_FILE = '/etc/tinyvless/beta_flags.json';
+var MODEM_FIELDS_FILE = '/etc/tinyvless/modem_card_fields.json';
+// modem_card_fields.json хранит СКРЫТЫЕ ключи (пусто = всё видно) — см. app4.js NET_STATS/
+// netHeaderBtns. Порядок здесь = порядок в карточке "Модем"; последний пункт — глобальный
+// баннер плохой связи (net-watchdog), не поле карточки, но живёт в том же файле/списке.
+var MODEM_FIELD_ORDER = ['operator', 'net_type', 'signal', 'model', 'reg_data', 'reg_voice', 'health', 'checked_ago', 'btn_led', 'banner'];
+var MODEM_FIELD_LABELS = {
+	operator: 'Оператор', net_type: 'Тип сети', signal: 'Сигнал', model: 'Модель модема',
+	reg_data: 'Регистрация (данные)', reg_voice: 'Регистрация (голос/SMS)', health: 'Здоровье сети',
+	checked_ago: 'Проверка была', btn_led: 'Кнопка «Обновить светодиоды»',
+	banner: 'Баннер плохой связи (вверху основной панели)'
+};
 // тот же канонический список, что в app4.js/microtun.js — держать в синхроне вручную,
 // это независимые файлы морды.
 var CARD_DEFAULT_ORDER = ['status', 'net', 'control', 'speed', 'clients', 'prof', 'dom', 'dns', 'reach', 'system'];
@@ -39,12 +50,17 @@ var STYLE = [
 return view.extend({
 	load: function () {
 		return Promise.all([
-			fs.read(BETA_FLAGS_FILE).catch(function () { return ''; })
+			fs.read(BETA_FLAGS_FILE).catch(function () { return ''; }),
+			fs.read(MODEM_FIELDS_FILE).catch(function () { return ''; })
 		]);
 	},
 	render: function (data) {
 		var betaFlags = (function () {
 			try { var a = JSON.parse(data[0] || ''); return Array.isArray(a) ? a.filter(function (k) { return CARD_LABELS[k] != null; }) : []; }
+			catch (e) { return []; }
+		})();
+		var modemHidden = (function () {
+			try { var a = JSON.parse(data[1] || ''); return Array.isArray(a) ? a.filter(function (k) { return MODEM_FIELD_LABELS[k] != null; }) : []; }
 			catch (e) { return []; }
 		})();
 
@@ -88,6 +104,37 @@ return view.extend({
 			msg
 		]);
 
+		var modemMsg = E('div', { 'class': 'tv-msg' }, '');
+		var elModemList = E('div', { 'class': 'tv-dom-list' });
+		MODEM_FIELD_ORDER.forEach(function (key) {
+			var sw = E('input', { type: 'checkbox' });
+			sw.checked = modemHidden.indexOf(key) === -1; // видимо по умолчанию
+			sw.addEventListener('change', function () {
+				var i = modemHidden.indexOf(key);
+				if (sw.checked) { if (i !== -1) modemHidden.splice(i, 1); }
+				else if (i === -1) { modemHidden.push(key); }
+			});
+			elModemList.appendChild(E('div', { 'class': 'tv-dom-chip' }, [
+				E('label', { 'class': 'tv-sw' }, [sw, E('span', { 'class': 'sl' })]),
+				E('span', { 'class': 'nm' }, MODEM_FIELD_LABELS[key])
+			]));
+		});
+		var btnModemSave = E('button', {
+			'class': 'tv-btn acc', type: 'button', click: function () {
+				modemMsg.textContent = 'Сохраняю…';
+				fs.write(MODEM_FIELDS_FILE, JSON.stringify(modemHidden)).then(function () {
+					modemMsg.textContent = '✓ Сохранено — обновите главную панель';
+				}).catch(function () { modemMsg.textContent = '⛔ Ошибка сохранения'; });
+			}
+		}, 'Сохранить');
+		var modemFieldsCard = E('div', { 'class': 'tv-card' }, [
+			E('div', { 'class': 'tv-card-h' }, [E('h3', {}, 'Видимость полей карточки «Модем»')]),
+			E('div', { 'class': 'tv-hint' }, 'Что показывать в карточке «Модем» на главной панели — выключенные поля/кнопки просто не рендерятся. Последний пункт — глобальный баннер плохой связи (net-watchdog) вверху основной панели.'),
+			elModemList,
+			E('div', { style: 'margin-top:12px' }, [btnModemSave]),
+			modemMsg
+		]);
+
 		// Роадмап — известные ограничения текущего железа и то, что осознанно отложено,
 		// а не забыто. Статичная карточка, ничего не пишет/не читает — просто чтобы решение
 		// и его причина не потерялись между сессиями.
@@ -117,6 +164,7 @@ return view.extend({
 					E('a', { href: '/tinyvless/' }, '← Основная панель')
 				]),
 				betaCard,
+				modemFieldsCard,
 				roadmapCard
 			])
 		]);

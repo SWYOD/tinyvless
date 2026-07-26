@@ -3,9 +3,19 @@
 USE_PROCD=1
 START=96
 
+MICROTUN_CONF=/etc/tinyvless/microtun.conf
+
 start_service() {
+	# читаются точечно из microtun.conf (LED_POLL_INTERVAL/AT_TIMEOUT_SEC, редактируются в
+	# микротюнинге) — компилируемый бинарь читает свой env один раз при старте, поэтому
+	# изменение требует рестарта сервиса (см. microtun-apply.sh, diff-gated).
+	LED_POLL=$(sed -n 's/^[[:space:]]*LED_POLL_INTERVAL=//p' "$MICROTUN_CONF" 2>/dev/null | head -1)
+	case "$LED_POLL" in ''|*[!0-9]*) LED_POLL=8 ;; esac
+	AT_TIMEOUT=$(sed -n 's/^[[:space:]]*AT_TIMEOUT_SEC=//p' "$MICROTUN_CONF" 2>/dev/null | head -1)
+	case "$AT_TIMEOUT" in ''|*[!0-9]*) AT_TIMEOUT=12 ;; esac
+
 	procd_open_instance
-	procd_set_param command /usr/bin/tvled
+	procd_set_param command /usr/bin/env "TV_LED_POLL_SEC=$LED_POLL" "TV_AT_TIMEOUT_SEC=$AT_TIMEOUT" /usr/bin/tvled
 	procd_set_param respawn 3600 5 5
 	procd_set_param stdout 1
 	procd_set_param stderr 1

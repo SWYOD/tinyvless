@@ -12,6 +12,7 @@
 				"/etc/tinyvless/speedtest_sources.json": [ "read" ],
 				"/etc/tinyvless/beta_flags.json": [ "read" ],
 				"/etc/tinyvless/poll_interval.json": [ "read" ],
+				"/etc/tinyvless/modem_card_fields.json": [ "read" ],
 				"/etc/tinyvless/api.sh": [ "exec" ]
 			}
 		},
@@ -26,7 +27,8 @@
 				"/etc/tinyvless/card_order.json": [ "write" ],
 				"/etc/tinyvless/speedtest_sources.json": [ "write" ],
 				"/etc/tinyvless/beta_flags.json": [ "write" ],
-				"/etc/tinyvless/poll_interval.json": [ "write" ]
+				"/etc/tinyvless/poll_interval.json": [ "write" ],
+				"/etc/tinyvless/modem_card_fields.json": [ "write" ]
 			}
 		}
 	}
